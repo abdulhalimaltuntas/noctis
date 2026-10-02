@@ -90,7 +90,7 @@ return {
     },
     watch = {
       -- debounce_ms = 250,
-      -- reconcile_ms = 4000,
+      -- reconcile_ms = 4000, -- en kısa aralık; yavaş taramada otomatik uzar (≤60 sn)
       -- max_dirs = 4000,
     },
     -- retention_days = 14,

@@ -138,8 +138,10 @@ neden dışlandığını listeler.
 - Olaylar birleştirilir; kısa bir yazma-durulma denetiminden sonra diff
   hesaplanır. Ölçülen gecikme: yazmanın bitişinden listede görünmeye
   **~370 ms** (test: `tests/lua/test_ai.lua`).
-- Kaçırılan olaylar için odak dönüşünde ve düşük sıklıkta (varsayılan 4 sn)
-  uzlaştırma yapılır; her tuşta proje taranmaz.
+- Kaçırılan olaylar için odak dönüşünde ve düşük sıklıkta uzlaştırma
+  yapılır; her tuşta proje taranmaz. Aralık son taramanın süresine göre
+  uyarlanır: küçük projede `reconcile_ms` (varsayılan 4 sn), taraması yavaş
+  büyük projede en fazla 60 sn'de bir.
 - Bildirimler toplanır (en fazla birkaç saniyede bir tek mesaj); yeni dosyaya
   zorla geçilmez. Kendi kaydettiğiniz dosyalar için bildirim gösterilmez
   (listede yine görünür).
