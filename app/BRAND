@@ -1,6 +1,6 @@
-# NOCTIS ürün kimliği — tek kaynak.
-# Launcher (bash), kurulum scriptleri ve Lua katmanı bu dosyayı okur.
-# Ürünü yeniden adlandırmak için burayı değiştirin ve yeniden kurun.
+# NOCTIS product identity — single source of truth.
+# The launcher (bash), install scripts and the Lua layer all read this file.
+# To rename the product, change it here and reinstall.
 NAME=NOCTIS
 COMMAND=noctis
 APPNAME=noctis

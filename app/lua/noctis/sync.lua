@@ -1,15 +1,15 @@
--- Buffer ↔ disk senkronizasyonu ve çatışma yönetimi.
+-- Buffer ↔ disk synchronization and conflict handling.
 --
--- Kurallar:
---   * Temiz buffer: disk değişince güvenle yeniden yüklenir; görünüm korunur,
---     değişen satırlar kısa süre vurgulanır, yeniden yükleme `u` ile geri alınabilir
+-- Rules:
+--   * Clean buffer: when the disk changes it's reloaded safely; the view is kept,
+--     changed lines are briefly highlighted, and the reload can be undone with `u`
 --     ('undoreload').
---   * Kaydedilmemiş buffer: otomatik reload/save YOK. Buffer çatışmalı işaretlenir;
---     kaydetmede güncel disk sürümü yeniden denetlenir.
---   * Çatışma: yerel buffer, güncel disk ve buffer'ın en son senkronize olduğu
---     içerik (taban) üzerinden karşılaştırma/birleştirme sunulur. Taban yoksa
---     manuel diff ve ayrı kopya kaydetme yolu sunulur.
---   * Silinen/taşınan dosya: buffer içeriği kaybedilmez (değiştirilmiş işaretlenir).
+--   * Buffer with unsaved changes: NO automatic reload/save. The buffer is marked
+--     as conflicted; on save the current disk version is checked again.
+--   * Conflict: compare/merge is offered using the local buffer, the current disk
+--     and the content the buffer was last in sync with (the base). Without a base,
+--     a manual diff and saving a separate copy are offered.
+--   * Deleted/moved file: the buffer content is never lost (it's marked modified).
 local M = {}
 
 local U = require("noctis.util")
@@ -17,9 +17,9 @@ local api = vim.api
 
 local ns = api.nvim_create_namespace("noctis.sync")
 
----@type table<integer, string> buffer -> son senkron içerik (disk ile eşit olduğu bilinen)
+---@type table<integer, string> buffer -> last synced content (known to equal the disk)
 M.base = {}
----@type table<integer, {mtime:integer, nsec:integer, size:integer, ino:integer}?> son senkron disk durumu
+---@type table<integer, {mtime:integer, nsec:integer, size:integer, ino:integer}?> last synced disk state
 M.stat = {}
 M.MAX_BASE = 4 * 1024 * 1024
 
@@ -27,7 +27,7 @@ local function is_file_buf(buf)
   return api.nvim_buf_is_valid(buf) and vim.bo[buf].buftype == "" and api.nvim_buf_get_name(buf) ~= ""
 end
 
---- Buffer içeriğini diske yazılacak biçimde metne çevir.
+--- Convert buffer content to text as it would be written to disk.
 function M.buf_text(buf)
   local lines = api.nvim_buf_get_lines(buf, 0, -1, false)
   local nl = vim.bo[buf].fileformat == "dos" and "\r\n" or "\n"
@@ -38,7 +38,7 @@ function M.buf_text(buf)
   return text
 end
 
---- Bu buffer için taban (son senkron içerik) kaydet.
+--- Record the base (last synced content) for this buffer.
 function M.remember(buf)
   if not is_file_buf(buf) then
     M.base[buf], M.stat[buf] = nil, nil
@@ -81,7 +81,7 @@ local function restore_views(buf, views)
   end
 end
 
---- Değişen satırları kısa süre vurgula (ölçülü: tek renk, birkaç saniye).
+--- Briefly highlight changed lines (restrained: one color, a few seconds).
 function M.flash(buf, old_lines)
   if not api.nvim_buf_is_valid(buf) then
     return
@@ -132,7 +132,7 @@ function M.has_conflict(buf)
   return api.nvim_buf_is_valid(buf) and vim.b[buf].noctis_conflict ~= nil
 end
 
---- FileChangedShell işleyicisi (buffer değiştirilemez; yalnız karar verilir).
+--- FileChangedShell handler (the buffer can't be changed here; only a decision is made).
 local function on_changed_shell(ev)
   local buf = ev.buf
   local reason = vim.v.fcs_reason
@@ -141,10 +141,10 @@ local function on_changed_shell(ev)
     vim.v.fcs_choice = ""
     vim.schedule(function()
       if api.nvim_buf_is_valid(buf) then
-        -- İçerik artık yalnız bu buffer'da: çıkışta sorulması için değiştirilmiş say.
+        -- The content now only lives in this buffer: mark it modified so quitting asks.
         vim.bo[buf].modified = true
         M.mark_conflict(buf, "deleted")
-        U.warn(("`%s` diskten silindi veya taşındı. İçerik buffer'da korunuyor.\nKaydetmek: Space f s · Seçenekler: :NoctisConflict"):format(name))
+        U.warn(("`%s` was deleted or moved on disk. The content is kept in the buffer.\nSave: Space f s · Options: :NoctisConflict"):format(name))
       end
     end)
   elseif reason == "conflict" or (reason == "changed" and vim.bo[buf].modified) then
@@ -153,14 +153,14 @@ local function on_changed_shell(ev)
       if api.nvim_buf_is_valid(buf) then
         M.mark_conflict(buf, "changed")
         U.warn(
-          ("`%s` dışarıdan değişti ama buffer'da kaydedilmemiş düzenlemeniz var.\nHiçbiri ezilmedi. Karşılaştır/birleştir: :NoctisConflict"):format(name)
+          ("`%s` changed on disk, but you have unsaved edits in the buffer.\nNeither was overwritten. Compare/merge: :NoctisConflict"):format(name)
         )
       end
     end)
   elseif reason == "changed" then
     pending[buf] = { lines = api.nvim_buf_get_lines(buf, 0, -1, false), views = views_for(buf) }
     vim.v.fcs_choice = "reload"
-  else -- "mode", "time": içerik değişmedi
+  else -- "mode", "time": the content didn't change
     vim.v.fcs_choice = ""
   end
 end
@@ -178,7 +178,7 @@ local function on_changed_shell_post(ev)
   end
 end
 
---- Belirli buffer(lar) için disk denetimi tetikle.
+--- Trigger a disk check for specific buffer(s).
 function M.check(buf)
   if buf then
     if is_file_buf(buf) then
@@ -189,7 +189,7 @@ function M.check(buf)
   end
 end
 
---- Disk, buffer'ın son senkronundan beri değişti mi? (stat + içerik)
+--- Has the disk changed since the buffer's last sync? (stat + content)
 ---@return boolean changed, string? reason  "changed" | "deleted"
 function M.disk_changed(buf)
   local path = api.nvim_buf_get_name(buf)
@@ -208,7 +208,7 @@ function M.disk_changed(buf)
   if base then
     local text = U.read_file(path)
     if text == base then
-      -- yalnız zaman damgası/inode değişti (ör. atomik kayıt aynı içerikle)
+      -- only the timestamp/inode changed (e.g. an atomic save with the same content)
       M.stat[buf] = { mtime = st.mtime.sec, nsec = st.mtime.nsec, size = st.size, ino = st.ino }
       return false
     end
@@ -216,16 +216,16 @@ function M.disk_changed(buf)
   return true, "changed"
 end
 
---- Kullanıcı güncel disk sürümünü gördü/birleştirdi: bu sürüm yeni referanstır.
---- Sonraki kayıt, disk o andan beri yeniden değişmediyse Neovim'in yerleşik
---- "okunduktan sonra değişti" sorusunu sormadan yazar.
+--- The user saw/merged the current disk version: it becomes the new reference.
+--- The next save writes without Neovim's built-in "changed since reading"
+--- prompt, as long as the disk hasn't changed again since then.
 function M.acknowledge(buf)
   local st = vim.uv.fs_stat(api.nvim_buf_get_name(buf))
   M.stat[buf] = st and { mtime = st.mtime.sec, nsec = st.mtime.nsec, size = st.size, ino = st.ino } or nil
   vim.b[buf].noctis_ack = true
 end
 
---- Diskteki içerik (okunamazsa nil)
+--- Content on disk (nil if unreadable)
 function M.disk_text(buf)
   return U.read_file(api.nvim_buf_get_name(buf))
 end
@@ -241,11 +241,11 @@ local function to_lines(text, ff)
   return lines
 end
 
---- Disk sürümünü salt-okunur scratch buffer olarak aç ve yerel buffer ile diff'le.
+--- Open the disk version as a read-only scratch buffer and diff it against the local buffer.
 function M.diff_with_disk(buf)
   local text = M.disk_text(buf)
   if not text then
-    U.warn("Diskte dosya yok; karşılaştırılacak sürüm bulunamadı.")
+    U.warn("The file doesn't exist on disk; there's no version to compare with.")
     return
   end
   local name = api.nvim_buf_get_name(buf)
@@ -254,79 +254,79 @@ function M.diff_with_disk(buf)
   vim.cmd("diffthis")
   vim.cmd("leftabove vnew")
   local scratch = api.nvim_get_current_buf()
-  vim.bo[scratch].buflisted = false -- geçici buffer sekme çubuğunda görünmesin
+  vim.bo[scratch].buflisted = false -- keep the temporary buffer out of the tab bar
   api.nvim_buf_set_lines(scratch, 0, -1, false, to_lines(text, vim.bo[buf].fileformat))
   vim.bo[scratch].buftype = "nofile"
   vim.bo[scratch].bufhidden = "wipe"
   vim.bo[scratch].modifiable = false
   vim.bo[scratch].filetype = vim.bo[buf].filetype
-  pcall(api.nvim_buf_set_name, scratch, "disk://" .. vim.fn.fnamemodify(name, ":~:.") .. " (diskteki sürüm)")
+  pcall(api.nvim_buf_set_name, scratch, "disk://" .. vim.fn.fnamemodify(name, ":~:.") .. " (on-disk version)")
   vim.cmd("diffthis")
-  vim.wo.winbar = "%#NoctisWarning# DİSK %#NoctisMuted# güncel disk içeriği (salt okunur)"
+  vim.wo.winbar = "%#NoctisWarning# DISK %#NoctisMuted# current disk content (read-only)"
   vim.cmd("wincmd l")
-  vim.wo.winbar = "%#NoctisAccent# YEREL %#NoctisMuted# buffer'daki düzenlemeniz · `do`/`dp` ile hunk taşı · kaydet: Space f s"
-  U.info("Sol: disk, sağ: yerel buffer. `]c`/`[c` ile farklar arasında gezin; sekmeyi kapatmak: :tabclose")
+  vim.wo.winbar = "%#NoctisAccent# LOCAL %#NoctisMuted# your edits in the buffer · move hunks with `do`/`dp` · save: Space f s"
+  U.info("Left: disk, right: local buffer. Move between differences with `]c`/`[c`; close the tab: :tabclose")
 end
 
---- Yerel buffer içeriğini ayrı bir kopya dosyasına kaydet (proje dışında, state içinde).
+--- Save the local buffer content to a separate copy (outside the project, in state).
 function M.save_copy(buf)
   local name = vim.fn.fnamemodify(api.nvim_buf_get_name(buf), ":t")
   local dir = U.state_dir("recovered")
   local path = ("%s/%s.%s.local"):format(dir, name, os.date("%Y%m%d-%H%M%S"))
   local ok, err = U.write_file(path, M.buf_text(buf), 384)
   if ok then
-    U.info("Yerel sürümün kopyası kaydedildi:\n" .. path)
+    U.info("Saved a copy of the local version:\n" .. path)
     return path
   end
-  U.error("Kopya kaydedilemedi: " .. tostring(err))
+  U.error("Could not save the copy: " .. tostring(err))
 end
 
---- 3 yollu birleştirme: taban (son senkron), yerel (buffer), disk.
---- Sonuç buffer'a yazılır (undo ile geri alınabilir); çakışan bölümler
---- işaretlerle bırakılır. Diske yazılmaz.
+--- 3-way merge: base (last sync), local (buffer), disk.
+--- The result is written to the buffer (undoable); conflicting sections are
+--- left with markers. Nothing is written to disk.
 function M.merge(buf)
   local base = M.base[buf]
   local disk = M.disk_text(buf)
   if not base or not disk then
-    U.warn("Güvenilir ortak taban yok; birleştirme yerine karşılaştırma açılıyor.")
+    U.warn("No reliable common base; opening a comparison instead of a merge.")
     return M.diff_with_disk(buf)
   end
   if not U.has("git") then
-    U.warn("Birleştirme için `git merge-file` gerekli; karşılaştırma açılıyor.")
+    U.warn("Merging needs `git merge-file`; opening a comparison.")
     return M.diff_with_disk(buf)
   end
   local tmp = vim.fn.tempname()
   vim.fn.mkdir(tmp, "p", "0o700")
-  local fl, fb, fd = tmp .. "/yerel", tmp .. "/taban", tmp .. "/disk"
+  local fl, fb, fd = tmp .. "/local", tmp .. "/base", tmp .. "/disk"
   U.write_file(fl, M.buf_text(buf))
   U.write_file(fb, base)
   U.write_file(fd, disk)
   local res = vim
-    .system({ "git", "merge-file", "-p", "-L", "yerel (buffer)", "-L", "taban (son senkron)", "-L", "disk (güncel)", fl, fb, fd }, { text = true })
+    .system({ "git", "merge-file", "-p", "-L", "local (buffer)", "-L", "base (last sync)", "-L", "disk (current)", fl, fb, fd }, { text = true })
     :wait(10000)
   vim.fn.delete(tmp, "rf")
   if res.code < 0 or res.code > 127 then
-    U.error("Birleştirme başarısız: " .. (res.stderr or ""))
+    U.error("Merge failed: " .. (res.stderr or ""))
     return
   end
   local merged = to_lines(res.stdout or "", "unix")
   api.nvim_buf_set_lines(buf, 0, -1, false, merged)
-  -- Birleşmiş içerik artık güncel disk sürümünü temel alır.
+  -- The merged content is now based on the current disk version.
   M.base[buf] = disk
   M.acknowledge(buf)
   if res.code == 0 then
     M.clear_conflict(buf)
-    U.info("Birleştirme temiz tamamlandı (buffer güncellendi, henüz kaydedilmedi). Geri almak: u")
+    U.info("Merge completed cleanly (buffer updated, not saved yet). Undo: u")
   else
     vim.b[buf].noctis_conflict = { reason = "markers", at = os.time() }
-    U.warn(("%d çakışan bölüm var: <<<<<<< / ||||||| / ======= / >>>>>>> işaretlerini düzenleyip kaydedin."):format(res.code))
+    U.warn(("%d conflicting sections: edit the <<<<<<< / ||||||| / ======= / >>>>>>> markers and save."):format(res.code))
     vim.fn.search("^<<<<<<< ", "w")
   end
-  -- Neovim'in kayıtlı dosya zamanını güncelle ki kaydetme yeniden uyarmasın.
+  -- Update Neovim's recorded file time so saving doesn't warn again.
   pcall(vim.cmd, "checktime " .. buf)
 end
 
---- Diskteki sürümü buffer'a yükle (yerel düzenlemenin kopyası önce saklanır).
+--- Load the disk version into the buffer (a copy of the local edits is kept first).
 function M.take_disk(buf)
   if vim.bo[buf].modified then
     M.save_copy(buf)
@@ -338,7 +338,7 @@ function M.take_disk(buf)
   M.remember(buf)
 end
 
---- Çatışma çözüm menüsü
+--- Conflict resolution menu
 function M.resolve(buf, opts)
   buf = (buf == nil or buf == 0) and api.nvim_get_current_buf() or buf
   opts = opts or {}
@@ -347,28 +347,28 @@ function M.resolve(buf, opts)
   local choices = {}
   if c and c.reason == "deleted" or not exists then
     choices = {
-      { "Bu yola yeniden kaydet", function()
+      { "Save again to this path", function()
         api.nvim_buf_call(buf, function()
           vim.cmd("write!")
         end)
         M.clear_conflict(buf)
       end },
-      { "Yeni konuma kaydet…", function()
+      { "Save to a new location…", function()
         require("noctis.files").save_as(buf)
       end },
-      { "Yerel içeriğin kopyasını sakla", function()
+      { "Keep a copy of the local content", function()
         M.save_copy(buf)
       end },
     }
   else
     choices = {
-      { "Karşılaştır (disk ↔ yerel)", function()
+      { "Compare (disk ↔ local)", function()
         M.diff_with_disk(buf)
       end },
-      { "3 yollu birleştir (taban: son senkron)", function()
+      { "3-way merge (base: last sync)", function()
         M.merge(buf)
       end },
-      { "Yerel sürümü yaz (diskteki değişikliği ez)", function()
+      { "Write the local version (overwrite the disk change)", function()
         M.save_copy_disk(buf)
         api.nvim_buf_call(buf, function()
           vim.cmd("write!")
@@ -376,10 +376,10 @@ function M.resolve(buf, opts)
         M.clear_conflict(buf)
         M.remember(buf)
       end },
-      { "Diskteki sürümü yükle (yerel kopya önce saklanır)", function()
+      { "Load the disk version (a local copy is kept first)", function()
         M.take_disk(buf)
       end },
-      { "Yerel içeriği ayrı dosyaya kopyala", function()
+      { "Copy the local content to a separate file", function()
         M.save_copy(buf)
       end },
     }
@@ -388,7 +388,7 @@ function M.resolve(buf, opts)
     return x[1]
   end, choices)
   vim.ui.select(labels, {
-    prompt = opts.on_save and "Disk sürümü kaydetmeden önce değişmiş — ne yapılsın?" or "Disk/buffer çatışması",
+    prompt = opts.on_save and "The disk version changed before saving — what should happen?" or "Disk/buffer conflict",
   }, function(_, idx)
     if idx then
       choices[idx][2]()
@@ -396,7 +396,7 @@ function M.resolve(buf, opts)
   end)
 end
 
---- Diskteki (ezilecek) sürümün kopyasını sakla — geri dönüş yolu.
+--- Keep a copy of the disk version being overwritten — a way back.
 function M.save_copy_disk(buf)
   local text = M.disk_text(buf)
   if not text then
@@ -405,7 +405,7 @@ function M.save_copy_disk(buf)
   local name = vim.fn.fnamemodify(api.nvim_buf_get_name(buf), ":t")
   local path = ("%s/%s.%s.disk"):format(U.state_dir("recovered"), name, os.date("%Y%m%d-%H%M%S"))
   U.write_file(path, text, 384)
-  U.log("INFO", "ezilen disk sürümü saklandı: " .. path)
+  U.log("INFO", "kept the overwritten disk version: " .. path)
 end
 
 function M.setup()
@@ -428,7 +428,7 @@ function M.setup()
       pending[ev.buf] = nil
     end,
   })
-  -- Kaçırılan değişiklikler: odak dönüşü, buffer'a giriş, terminalden çıkış.
+  -- Missed changes: focus regained, entering a buffer, leaving a terminal.
   api.nvim_create_autocmd({ "FocusGained", "TermLeave", "BufEnter" }, {
     group = group,
     callback = function(ev)
@@ -437,8 +437,8 @@ function M.setup()
       end
     end,
   })
-  -- Diske yazmadan hemen önce son bir denetim: çatışma işaretliyse ve
-  -- kullanıcı bunu NOCTIS kaydet komutuyla çözmediyse yerleşik koruma devrededir.
+  -- One last check right before writing to disk: if a conflict is marked and
+  -- the user didn't resolve it via the NOCTIS save command, the built-in protection applies.
 end
 
 return M

@@ -1,12 +1,12 @@
--- Biçimlendirme. Kaydederken biçimlendirme varsayılan olarak kapalıdır ve
--- dosya türüne göre açılır. Aynı kayıtta tek formatter çalışır
--- (stop_after_first + LSP yalnız yedek). Hata/zaman aşımı kaydı engellemez,
--- görünür bildirim üretir.
+-- Formatting. Format-on-save is off by default and can be enabled per
+-- filetype. Only one formatter runs per save (stop_after_first + LSP only as
+-- a fallback). Errors/timeouts never block the save; they produce a visible
+-- notification.
 local M = {}
 
 local U = require("noctis.util")
 
----@type table<string, boolean> bu oturumda dosya türü bazında açık/kapalı
+---@type table<string, boolean> per-filetype on/off for this session
 M.session_ft = {}
 
 function M.enabled_for(buf)
@@ -34,12 +34,12 @@ end
 function M.toggle_on_save()
   local ft = vim.bo.filetype
   if ft == "" then
-    U.info("Bu buffer'ın dosya türü yok.")
+    U.info("This buffer has no filetype.")
     return
   end
   local now = not M.enabled_for(0)
   M.session_ft[ft] = now
-  U.info(("Kaydederken biçimlendirme (%s): %s — kalıcı yapmak için config.lua › format_on_save"):format(ft, now and "AÇIK" or "kapalı"))
+  U.info(("Format on save (%s): %s — to make it permanent use config.lua › format_on_save"):format(ft, now and "ON" or "off"))
 end
 
 function M.format()
@@ -53,9 +53,9 @@ function M.format()
     end
     conform.format({ async = true, lsp_format = "fallback", range = range }, function(err, did_edit)
       if err then
-        U.error("Biçimlendirme başarısız: " .. tostring(err))
+        U.error("Formatting failed: " .. tostring(err))
       elseif did_edit == false then
-        U.info("Değişiklik yok (zaten biçimli veya formatter yok: :NoctisLang)")
+        U.info("No changes (already formatted, or no formatter: :NoctisLang)")
       end
     end)
     return
@@ -64,7 +64,7 @@ function M.format()
   if #clients > 0 then
     vim.lsp.buf.format({ async = true })
   else
-    U.info("Bu dosya türü için formatter yok. Durum: :NoctisLang")
+    U.info("No formatter for this filetype. Status: :NoctisLang")
   end
 end
 

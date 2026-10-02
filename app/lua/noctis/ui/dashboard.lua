@@ -1,6 +1,6 @@
--- Açılış ekranı. Son dosyalar ve projeler yalnız gerçek yerel veriden gelir
--- (v:oldfiles ve NOCTIS proje geçmişi). Dosya/klasör argümanıyla başlatıldığında
--- gösterilmez.
+-- Start screen. Recent files and projects come only from real local data
+-- (v:oldfiles and the NOCTIS project history). Not shown when started with a
+-- file/folder argument.
 local M = {}
 
 local api = vim.api
@@ -38,20 +38,20 @@ end
 
 local function actions()
   local list = {
-    { key = "n", label = "Yeni dosya", id = "files.new" },
-    { key = "f", label = "Dosya bul", id = "files.find" },
-    { key = "g", label = "Projede ara", id = "files.grep" },
-    { key = "o", label = "Proje aç", id = "project.open" },
+    { key = "n", label = "New file", id = "files.new" },
+    { key = "f", label = "Find file", id = "files.find" },
+    { key = "g", label = "Search project", id = "files.grep" },
+    { key = "o", label = "Open project", id = "project.open" },
   }
   if require("noctis.session").exists() then
-    list[#list + 1] = { key = "s", label = "Oturumu geri yükle", id = "session.restore" }
+    list[#list + 1] = { key = "s", label = "Restore session", id = "session.restore" }
   end
   vim.list_extend(list, {
     { key = "w", label = "AI Workbench", id = "ai.toggle" },
-    { key = "t", label = "1 dakikalık rehber", id = "help.tutorial" },
-    { key = "?", label = "Yardım ve kısayollar", id = "help" },
-    { key = ",", label = "Ayarlar", id = "config.open" },
-    { key = "q", label = "Çık", id = "quit" },
+    { key = "t", label = "One-minute tour", id = "help.tutorial" },
+    { key = "?", label = "Help and keymaps", id = "help" },
+    { key = ",", label = "Settings", id = "config.open" },
+    { key = "q", label = "Quit", id = "quit" },
   })
   return list
 end
@@ -111,7 +111,7 @@ local function render()
     lines[#lines + 1] = { text = text, hls = hls, act = act, key = key }
   end
 
-  -- Başlık (küçük metin logo)
+  -- Title (small text logo)
   local acts = actions()
   local tall = height >= 30
   local top = tall and math.max(1, math.floor(height * 0.12)) or 1
@@ -119,31 +119,31 @@ local function render()
     blank()
   end
   center(logo, "NoctisDashTitle")
-  center("Neovim tabanlı terminal kodlama ortamı · v" .. require("noctis.brand").version, "NoctisDashSubtitle")
+  center("Neovim-based terminal coding environment · v" .. require("noctis.brand").version, "NoctisDashSubtitle")
   local proj = require("noctis.project")
   local root = vim.fn.fnamemodify(proj.root(), ":~")
-  local ptxt = ("proje: %s%s"):format(root, proj.kind() == "git" and "  (git)" or "")
+  local ptxt = ("project: %s%s"):format(root, proj.kind() == "git" and "  (git)" or "")
   center(U.shorten_path(ptxt, math.max(20, width - 6)), "NoctisDashPath")
   blank()
 
-  section("Başla")
+  section("Start")
   for _, a in ipairs(acts) do
     item(a.key, a.label, keyhint(a.id), function()
       require("noctis.registry").run(a.id)
     end)
   end
 
-  -- Kalan yüksekliğe göre listeleri kısalt
+  -- Shorten the lists to fit the remaining height
   local remaining = height - #lines - 4
   local nfiles = math.max(0, math.min(9, math.floor(remaining * 0.6) - 2))
   local nprojects = math.max(0, math.min(5, remaining - nfiles - 5))
 
   if nfiles > 0 then
     blank()
-    section("Son dosyalar")
+    section("Recent files")
     local files = recent_files(nfiles)
     if #files == 0 then
-      local t = "Henüz son dosya yok — f ile dosya bulun ya da o ile bir proje açın."
+      local t = "No recent files yet — press f to find a file or o to open a project."
       lines[#lines + 1] = { text = pad .. "  " .. t, hls = { { #pad, #pad + #t + 2, "NoctisDashEmpty" } } }
     end
     for i, f in ipairs(files) do
@@ -158,7 +158,7 @@ local function render()
     local projects = proj.recent()
     if #projects > 0 then
       blank()
-      section("Son projeler")
+      section("Recent projects")
       local keys = { "a", "b", "c", "d", "e" }
       for i = 1, math.min(nprojects, #projects) do
         local p = projects[i].path
@@ -169,9 +169,9 @@ local function render()
     end
   end
   blank()
-  center("Space Space: komut paleti  ·  j/k: gez  ·  Enter: seç", "NoctisDim")
+  center("Space Space: command palette  ·  j/k: move  ·  Enter: select", "NoctisDim")
 
-  -- Yaz
+  -- Write
   vim.bo[buf].modifiable = true
   api.nvim_buf_set_lines(
     buf,
@@ -193,7 +193,7 @@ local function render()
       M.items[#M.items + 1] = { row = i, act = l.act, key = l.key, col = #pad + 2 }
     end
   end
-  -- Kısayollar
+  -- Keymaps
   for _, it in ipairs(M.items) do
     vim.keymap.set("n", it.key, it.act, { buffer = buf, nowait = true, silent = true })
   end
@@ -237,7 +237,7 @@ end
 
 local sel_ns = api.nvim_create_namespace("noctis.dashboard.sel")
 
---- Seçili öğeyi yalnız öğe alanında vurgula (tüm satır boyunca değil)
+--- Highlight the selected item only over the item area (not the whole line)
 local function highlight_current()
   local buf = M.buf
   if not buf or not api.nvim_buf_is_valid(buf) or api.nvim_get_current_buf() ~= buf then
@@ -309,7 +309,7 @@ function M.open(opts)
   highlight_current()
   api.nvim_create_autocmd("CursorMoved", { buffer = buf, callback = highlight_current })
   if opts.force then
-    -- Komutla açıldıysa q dashboard'u kapatır, uygulamadan çıkmaz
+    -- When opened by command, q closes the dashboard instead of quitting
     map("q", function()
       M.close()
     end)

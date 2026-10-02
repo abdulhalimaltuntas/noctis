@@ -1,4 +1,4 @@
--- Ortak yardımcılar: bildirim, log, dosya G/Ç (atomik yazma), JSON, alt süreç ortamı.
+-- Shared helpers: notifications, logging, file I/O (atomic writes), JSON, child process environment.
 local M = {}
 
 local uv = vim.uv
@@ -72,7 +72,7 @@ function M.read_file(path)
   return data
 end
 
---- Atomik yazma: aynı dizinde geçici dosyaya yaz, fsync, rename.
+--- Atomic write: write to a temp file in the same directory, fsync, rename.
 ---@param path string
 ---@param data string
 ---@param mode? integer
@@ -112,7 +112,7 @@ function M.json_read(path)
   if ok and type(obj) == "table" then
     return obj
   end
-  M.log("WARN", "bozuk JSON yok sayıldı: " .. path)
+  M.log("WARN", "ignored corrupt JSON: " .. path)
   return nil
 end
 
@@ -127,8 +127,8 @@ function M.has(exe)
   return vim.fn.executable(exe) == 1
 end
 
---- Alt süreçler (terminal, AI CLI, görevler) için ortam.
---- NOCTIS'e özgü değişkenler temizlenir, kullanıcının NVIM_APPNAME değeri geri yüklenir.
+--- Environment for child processes (terminals, AI CLIs, tasks).
+--- NOCTIS-specific variables are removed and the user's NVIM_APPNAME is restored.
 ---@param extra? table<string,string>
 ---@return table<string,string>
 function M.child_env(extra)
@@ -146,7 +146,7 @@ function M.child_env(extra)
   return env
 end
 
---- Yolu normalize et (mutlak, sondaki / olmadan).
+--- Normalize a path (absolute, no trailing /).
 ---@param path string
 function M.norm(path)
   local p = vim.fs.normalize(vim.fn.fnamemodify(path, ":p"))
@@ -171,7 +171,7 @@ function M.relpath(root, path)
   return nil
 end
 
---- Basit debounce (son çağrıdan `ms` sonra tek sefer).
+--- Simple debounce (runs once, `ms` after the last call).
 function M.debounce(ms, fn)
   local timer = uv.new_timer()
   local args
@@ -195,7 +195,7 @@ function M.human_size(n)
   return ("%.1f MiB"):format(n / 1024 / 1024)
 end
 
---- Ekran genişliğine göre metni kırp (görüntü genişliği).
+--- Truncate text to a display width.
 function M.truncate(s, width)
   if vim.fn.strdisplaywidth(s) <= width then
     return s
@@ -210,7 +210,7 @@ function M.truncate(s, width)
   return out .. "…"
 end
 
---- Yolu soldan kısalt: …/dir/file.lua
+--- Shorten a path from the left: …/dir/file.lua
 function M.shorten_path(path, width)
   if vim.fn.strdisplaywidth(path) <= width then
     return path

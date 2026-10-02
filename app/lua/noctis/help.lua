@@ -1,5 +1,5 @@
--- Yardım: modlar, temel akış, terminalden dönüş ve gruplu kısayollar.
--- Kısayol bölümü registry'den üretilir (komut paleti ile aynı kaynak).
+-- Help: modes, the basic flow, getting out of terminals, and grouped keymaps.
+-- The keymap section is generated from the registry (same source as the command palette).
 local M = {}
 
 local R = require("noctis.registry")
@@ -7,31 +7,31 @@ local R = require("noctis.registry")
 function M.lines()
   local brand = require("noctis.brand")
   local out = {
-    "# " .. brand.name .. " — hızlı yardım",
+    "# " .. brand.name .. " — quick help",
     "",
-    brand.name .. " Neovim tabanlıdır: modal düzenleme korunur.",
+    brand.name .. " is built on Neovim: modal editing is kept.",
     "",
-    "## Modlar",
-    "  NORMAL  gezinme ve komutlar. Yazmak için  i",
-    "  INSERT  metin yazma. Bitirmek için  Esc",
-    "  VISUAL  seçim:  v  (karakter)  V  (satır). y kopyala · d sil · Esc bitir",
+    "## Modes",
+    "  NORMAL  navigation and commands. To type:  i",
+    "  INSERT  typing text. To finish:  Esc",
+    "  VISUAL  selection:  v  (characters)  V  (lines). y copy · d delete · Esc finish",
     "",
-    "## Temel akış",
-    "  Space f f   dosya bul           i / Esc   yaz / Normal moda dön",
-    "  Space f s   kaydet              Space Space   komut paleti",
-    "  Space b d   buffer'ı kapat      Space q q     güvenli çık",
-    "  u / Ctrl-r  geri al / yinele    /metin        dosyada ara (n/N sonraki)",
+    "## Basic flow",
+    "  Space f f   find file           i / Esc   type / back to Normal mode",
+    "  Space f s   save                Space Space   command palette",
+    "  Space b d   close buffer        Space q q     quit safely",
+    "  u / Ctrl-r  undo / redo         /text         search in file (n/N next)",
     "",
-    "## Terminal ve AI panelinden dönüş",
-    "  Terminalde Esc ve Ctrl-C uygulamaya gider (shell / AI aracı).",
-    "  Ctrl-\\ e        editör penceresine dön",
-    "  Ctrl-\\ Ctrl-n   terminalde Normal moda geç (kaydır, kopyala); i ile geri yaz",
-    "  Space a a / Space t t   panelleri gizle/göster (süreç çalışmaya devam eder)",
+    "## Getting out of the terminal and AI panel",
+    "  In a terminal, Esc and Ctrl-C go to the application (shell / AI tool).",
+    "  Ctrl-\\ e        back to the editor window",
+    "  Ctrl-\\ Ctrl-n   Normal mode inside the terminal (scroll, copy); i to type again",
+    "  Space a a / Space t t   hide/show the panels (the process keeps running)",
     "",
-    "## Pencereler ve buffer'lar",
-    "  Ctrl-h/j/k/l  pencereler arası geç       [b / ]b  önceki/sonraki buffer",
-    "  Üst çubuk açık dosyaları (buffer) gösterir. Neovim sekmeleri (tabpage) ayrı",
-    "  bir kavramdır; yalnız birden fazla sekme varsa sağda \"sekme 2/3\" görünür.",
+    "## Windows and buffers",
+    "  Ctrl-h/j/k/l  move between windows       [b / ]b  previous/next buffer",
+    "  The top bar shows open files (buffers). Neovim tabs (tabpages) are a separate",
+    "  concept; only when there is more than one, \"tab 2/3\" appears on the right.",
     "",
   }
   local by_group, order = {}, {}
@@ -50,12 +50,12 @@ function M.lines()
     vim.list_extend(out, by_group[g])
     out[#out + 1] = ""
   end
-  out[#out + 1] = "Tüm liste ve çakışma raporu: :NoctisKeys · Sağlık kontrolü: Space h h"
+  out[#out + 1] = "Full list and conflict report: :NoctisKeys · Health check: Space h h"
   return out
 end
 
 function M.open()
-  require("noctis.ui.float").text(M.lines(), { title = "Yardım", ft = "markdown", width = 84 })
+  require("noctis.ui.float").text(M.lines(), { title = "Help", ft = "markdown", width = 84 })
 end
 
 function M.keymaps()

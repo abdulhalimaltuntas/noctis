@@ -1,44 +1,44 @@
--- Komut kaydı: komut paleti, kısayollar, which-key grupları ve dokümantasyon
--- (docs/KEYMAPS.md) bu tek listeden beslenir.
+-- Command registry: the command palette, keymaps, which-key groups and the
+-- documentation (docs/KEYMAPS.md) are all fed from this single list.
 local M = {}
 
 ---@class noctis.Command
----@field id string            benzersiz kimlik, ör. "files.find"
----@field title string         palette görünen ad
----@field desc? string         kısa açıklama
----@field group string         kategori (Dosya, Kod, AI ...)
----@field keys? string         varsayılan Normal mod kısayolu
----@field mode? string|string[] kısayol modu (varsayılan "n")
----@field run fun()            çalıştırılacak işlem
----@field check? fun():boolean,string?  kullanılabilirlik ve gerekçe
----@field palette? boolean     false ise palette gösterilmez
+---@field id string            unique id, e.g. "files.find"
+---@field title string         name shown in the palette
+---@field desc? string         short description
+---@field group string         category (File, Code, AI ...)
+---@field keys? string         default Normal mode key
+---@field mode? string|string[] key mode (default "n")
+---@field run fun()            the action to run
+---@field check? fun():boolean,string?  availability and reason
+---@field palette? boolean     false hides it from the palette
 
 ---@type noctis.Command[]
 M.list = {}
 ---@type table<string, noctis.Command>
 M.by_id = {}
 
--- which-key grupları (leader sonrası ilk tuş)
+-- which-key groups (first key after leader)
 M.groups = {
   { "<leader>a", "AI Workbench" },
   { "<leader>b", "Buffer" },
-  { "<leader>c", "Kod" },
-  { "<leader>f", "Dosya / Bul" },
+  { "<leader>c", "Code" },
+  { "<leader>f", "File / Find" },
   { "<leader>g", "Git" },
-  { "<leader>h", "Yardım / Sistem" },
-  { "<leader>p", "Proje" },
-  { "<leader>q", "Çıkış / Oturum" },
-  { "<leader>s", "Ara / Değiştir" },
-  { "<leader>t", "Terminal / Görev" },
-  { "<leader>u", "Arayüz" },
-  { "<leader>w", "Pencere" },
-  { "<leader>x", "Tanılama" },
+  { "<leader>h", "Help / System" },
+  { "<leader>p", "Project" },
+  { "<leader>q", "Quit / Session" },
+  { "<leader>s", "Search / Replace" },
+  { "<leader>t", "Terminal / Tasks" },
+  { "<leader>u", "Interface" },
+  { "<leader>w", "Window" },
+  { "<leader>x", "Diagnostics" },
 }
 
 ---@param spec noctis.Command
 function M.add(spec)
-  assert(spec.id and spec.title and spec.run and spec.group, "eksik komut alanı: " .. vim.inspect(spec.id))
-  assert(not M.by_id[spec.id], "yinelenen komut kimliği: " .. spec.id)
+  assert(spec.id and spec.title and spec.run and spec.group, "missing command field: " .. vim.inspect(spec.id))
+  assert(not M.by_id[spec.id], "duplicate command id: " .. spec.id)
   M.list[#M.list + 1] = spec
   M.by_id[spec.id] = spec
 end
@@ -49,7 +49,7 @@ function M.available(cmd)
     cmd = M.by_id[cmd]
   end
   if not cmd then
-    return false, "bilinmeyen komut"
+    return false, "unknown command"
   end
   if cmd.check then
     local ok, ok2, reason = pcall(cmd.check)
@@ -65,22 +65,22 @@ end
 function M.run(id)
   local cmd = M.by_id[id]
   if not cmd then
-    require("noctis.util").error("Bilinmeyen komut: " .. tostring(id))
+    require("noctis.util").error("Unknown command: " .. tostring(id))
     return
   end
   local ok, reason = M.available(cmd)
   if not ok then
-    require("noctis.util").warn(("%s kullanılamıyor: %s"):format(cmd.title, reason or "gereksinim eksik"))
+    require("noctis.util").warn(("%s is unavailable: %s"):format(cmd.title, reason or "missing requirement"))
     return
   end
   local ok2, err = xpcall(cmd.run, debug.traceback)
   if not ok2 then
-    require("noctis.util").log("ERROR", ("komut %s: %s"):format(id, err))
-    require("noctis.util").error(("%s başarısız: %s"):format(cmd.title, tostring(err):match("^[^\n]*")))
+    require("noctis.util").log("ERROR", ("command %s: %s"):format(id, err))
+    require("noctis.util").error(("%s failed: %s"):format(cmd.title, tostring(err):match("^[^\n]*")))
   end
 end
 
---- Kullanıcı override'larıyla etkin kısayol (false = devre dışı)
+--- Effective key with user overrides (false = disabled)
 ---@return string|false|nil
 function M.effective_keys(cmd)
   local user = require("noctis.config").options.keymaps or {}
@@ -95,7 +95,7 @@ local function modes(cmd)
   return type(m) == "table" and m or { m }
 end
 
---- Aynı mod+tuş kombinasyonuna bağlanmış komutları ve prefix çakışmalarını bul.
+--- Find commands bound to the same mode+key combination, and prefix conflicts.
 ---@return string[] problems
 function M.conflicts()
   local seen, problems = {}, {}
@@ -110,7 +110,7 @@ function M.conflicts()
       for _, mode in ipairs(modes(cmd)) do
         local k = mode .. "\0" .. norm(keys)
         if seen[k] then
-          problems[#problems + 1] = ("%s (%s): `%s` ve `%s` aynı tuşu kullanıyor"):format(keys, mode, seen[k], cmd.id)
+          problems[#problems + 1] = ("%s (%s): `%s` and `%s` use the same key"):format(keys, mode, seen[k], cmd.id)
         else
           seen[k] = cmd.id
         end
@@ -118,12 +118,12 @@ function M.conflicts()
       end
     end
   end
-  -- Bir kısayol başka bir kısayolun öneki ise (ör. <leader>f ve <leader>ff),
-  -- kısa olan beklemeye yol açar.
+  -- If one key is a prefix of another (e.g. <leader>f and <leader>ff),
+  -- the shorter one causes a timeout wait.
   for _, a in ipairs(all) do
     for _, b in ipairs(all) do
       if a ~= b and a.mode == b.mode and #a.lhs < #b.lhs and b.lhs:sub(1, #a.lhs) == a.lhs then
-        problems[#problems + 1] = ("%s (%s) `%s`, `%s` için önek; bekleme gecikmesine yol açar"):format(
+        problems[#problems + 1] = ("%s (%s) `%s` is a prefix of `%s`; it causes a timeout delay"):format(
           a.keys,
           a.mode,
           a.id,
@@ -135,7 +135,7 @@ function M.conflicts()
   return problems
 end
 
---- Kayıttaki tüm kısayolları uygula.
+--- Apply every key in the registry.
 function M.apply_keymaps()
   for _, cmd in ipairs(M.list) do
     local keys = M.effective_keys(cmd)
@@ -145,15 +145,15 @@ function M.apply_keymaps()
       end, { desc = cmd.title, silent = true })
     end
   end
-  -- Kullanıcının override'da verdiği bilinmeyen kimlikleri bildir
+  -- Report unknown ids the user gave in overrides
   for id in pairs(require("noctis.config").options.keymaps or {}) do
     if not M.by_id[id] then
-      require("noctis.util").warn(("keymaps: bilinmeyen komut kimliği `%s` (`:NoctisKeys` ile listeleyin)"):format(id))
+      require("noctis.util").warn(("keymaps: unknown command id `%s` (list them with `:NoctisKeys`)"):format(id))
     end
   end
 end
 
---- Görünür adı için kısayolu biçimlendir: <leader>ff -> Space f f
+--- Display names for special keys: <leader>ff -> Space f f
 local special = {
   leader = "Space",
   space = "Space",
@@ -169,7 +169,7 @@ local special = {
   right = "→",
 }
 
---- Görünür ad için kısayolu biçimlendir: <leader>ff -> "Space f f",
+--- Format a key for display: <leader>ff -> "Space f f",
 --- <leader><space> -> "Space Space", <C-s> -> "Ctrl+s"
 function M.pretty_keys(keys)
   if not keys then
@@ -197,15 +197,15 @@ function M.pretty_keys(keys)
   return table.concat(tokens, " ")
 end
 
---- docs/KEYMAPS.md içeriğini üret
+--- Generate the contents of docs/KEYMAPS.md
 function M.markdown()
   local out = {
-    "# NOCTIS kısayolları ve komutları",
+    "# NOCTIS keymaps and commands",
     "",
-    "> Bu dosya `app/lua/noctis/commands.lua` içindeki komut kaydından üretilir",
-    "> (`tests/gen-keymaps.sh`). Elle düzenlemeyin; test paketi güncelliğini denetler.",
+    "> This file is generated from the command registry in `app/lua/noctis/commands.lua`",
+    "> (`tests/gen-keymaps.sh`). Don't edit it by hand; the test suite checks that it's up to date.",
     "",
-    "Tüm komutlar `Space Space` komut paletinden adıyla aranabilir. Tablo Normal mod içindir.",
+    "Every command can be found by name in the `Space Space` command palette. The table is for Normal mode.",
     "",
   }
   local by_group, order = {}, {}
@@ -221,7 +221,7 @@ function M.markdown()
   for _, g in ipairs(order) do
     out[#out + 1] = "## " .. g
     out[#out + 1] = ""
-    out[#out + 1] = "| Kısayol | Komut | Açıklama |"
+    out[#out + 1] = "| Key | Command | Description |"
     out[#out + 1] = "| --- | --- | --- |"
     for _, cmd in ipairs(by_group[g]) do
       local k = cmd.keys and ("`" .. M.pretty_keys(cmd.keys) .. "`") or "—"

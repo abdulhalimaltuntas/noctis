@@ -1,11 +1,11 @@
--- İnceleme kapsamı: hangi dosyaların içeriği başlangıç kaydına alınır.
--- Varsayılan: .gitignore'a uyulur; bağımlılık, build, cache ve hassas
--- dosyalar kayda alınmaz. Sembolik bağlantılar takip edilmez.
+-- Review scope: which files' content goes into the baseline.
+-- Default: .gitignore is respected; dependency, build, cache and sensitive
+-- files are not recorded. Symbolic links are not followed.
 local M = {}
 
 local U = require("noctis.util")
 
--- Hiç izlenmeyen klasörler (watcher da girmez)
+-- Folders never watched (the watcher doesn't enter them either)
 M.skip_dirs = {
   [".git"] = true,
   [".hg"] = true,
@@ -30,7 +30,7 @@ M.skip_dirs = {
   [".terraform"] = true,
 }
 
--- Hassas dosyalar: içerik asla kopyalanmaz (değişirse yalnız bildirilir)
+-- Sensitive files: content is never copied (a change is only reported)
 M.sensitive = {
   "^%.env$",
   "^%.env%..+",
@@ -67,7 +67,7 @@ local function glob_to_lua(g)
   return "^" .. p .. "$"
 end
 
---- Kullanıcı dışlamaları (config: ai.baseline.exclude)
+--- User exclusions (config: ai.baseline.exclude)
 function M.user_excluded(rel)
   for _, g in ipairs(require("noctis.config").options.ai.baseline.exclude or {}) do
     local pat = glob_to_lua(g)
@@ -78,7 +78,7 @@ function M.user_excluded(rel)
   return false
 end
 
---- Yolun herhangi bir bileşeni atlanan klasör mü?
+--- Is any component of the path a skipped folder?
 function M.in_skipped_dir(rel)
   for part in rel:gmatch("[^/]+") do
     if M.skip_dirs[part] then
@@ -88,7 +88,7 @@ function M.in_skipped_dir(rel)
   return false
 end
 
---- Proje dosyalarını listele (göreli yollar). .gitignore uygulanır.
+--- List project files (relative paths). .gitignore is applied.
 ---@return string[] files, string method
 function M.list_files(root)
   local cfg = require("noctis.config").options.ai.baseline
@@ -107,9 +107,9 @@ function M.list_files(root)
       files[#files + 1] = line:gsub("^%./", "")
     end
     table.sort(files)
-    return files, cfg.respect_gitignore and "ripgrep (.gitignore uygulanır)" or "ripgrep (yok sayma kapalı)"
+    return files, cfg.respect_gitignore and "ripgrep (.gitignore applied)" or "ripgrep (ignore rules off)"
   end
-  -- Yedek: dizin yürüyüşü (gitignore uygulanamaz)
+  -- Fallback: a directory walk (gitignore can't be applied)
   for name, t in vim.fs.dir(root, {
     depth = 40,
     skip = function(dir)
@@ -121,14 +121,14 @@ function M.list_files(root)
     end
   end
   table.sort(files)
-  return files, "dizin taraması (ripgrep yok: .gitignore uygulanamadı)"
+  return files, "directory scan (no ripgrep: .gitignore not applied)"
 end
 
---- Verilen yeni yollardan hangileri yok sayılmıyor? (.gitignore, .ignore)
---- Dizin bazında `rg --files --max-depth 1` ile kontrol edilir.
+--- Which of the given new paths are not ignored? (.gitignore, .ignore)
+--- Checked with ripgrep walking from the root.
 ---@param root string
 ---@param rels string[]
----@return table<string, boolean> kapsamda olanlar
+---@return table<string, boolean> the ones in scope
 function M.not_ignored(root, rels)
   local cfg = require("noctis.config").options.ai.baseline
   local out = {}
@@ -138,8 +138,8 @@ function M.not_ignored(root, rels)
     end
     return out
   end
-  -- ripgrep açıkça verilen yollara yok sayma kurallarını uygulamaz; bu yüzden
-  -- kökten yürünür ve aday dosyalar glob beyaz listesiyle süzülür.
+  -- ripgrep doesn't apply ignore rules to explicitly given paths, so it
+  -- walks from the root and the candidate files are filtered with a glob whitelist.
   local args = { "rg", "--files", "--hidden", "--no-require-git", "--no-follow", "--color", "never" }
   for _, r in ipairs(rels) do
     args[#args + 1] = "--glob"

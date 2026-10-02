@@ -1,6 +1,6 @@
--- Dosya gezgini: snacks explorer (Git durumu, gizli/yok sayılan dosyalar).
--- Silme işlemi NOCTIS çöp kutusuna yönlendirilir (geri alınabilir).
--- Eklentisiz modda netrw kullanılır.
+-- File explorer: the snacks explorer (Git status, hidden/ignored files).
+-- Deletes are routed to the NOCTIS trash (recoverable).
+-- Without plugins, netrw is used.
 local M = {}
 
 local U = require("noctis.util")
@@ -42,7 +42,7 @@ function M.open()
     vim.cmd("Lexplore " .. vim.fn.fnameescape(require("noctis.project").root()))
     vim.cmd("vertical resize " .. M.width())
   else
-    U.warn("Dosya gezgini için snacks.nvim gerekli (noctis --setup).")
+    U.warn("The file explorer needs snacks.nvim (noctis --setup).")
   end
 end
 
@@ -61,7 +61,7 @@ function M.toggle()
   end
 end
 
---- Explorer silme eylemi: onay + NOCTIS çöp kutusu
+--- Explorer delete action: confirmation + NOCTIS trash
 function M.delete_action(picker)
   local Tree = require("snacks.explorer.tree")
   local Actions = require("snacks.explorer.actions")
@@ -69,15 +69,15 @@ function M.delete_action(picker)
   if #paths == 0 then
     return
   end
-  local what = #paths == 1 and vim.fn.fnamemodify(paths[1], ":p:~:.") or (#paths .. " öğe")
-  local msg = ("%s silinsin mi?\nNOCTIS çöp kutusuna taşınır; Space f T ile geri yüklenebilir."):format(what)
-  if vim.fn.confirm(msg, "&Sil\n&Vazgeç", 2) ~= 1 then
+  local what = #paths == 1 and vim.fn.fnamemodify(paths[1], ":p:~:.") or (#paths .. " items")
+  local msg = ("Delete %s?\nIt's moved to the NOCTIS trash; restore it with Space f T."):format(what)
+  if vim.fn.confirm(msg, "&Delete\n&Cancel", 2) ~= 1 then
     return
   end
   for _, path in ipairs(paths) do
     local buf = vim.fn.bufnr(path)
     if buf > 0 and vim.bo[buf].modified then
-      U.warn(("`%s` kaydedilmemiş değişiklik içeriyor; atlandı."):format(vim.fn.fnamemodify(path, ":t")))
+      U.warn(("`%s` has unsaved changes; skipped."):format(vim.fn.fnamemodify(path, ":t")))
     else
       local ok, err = require("noctis.trash").move(path)
       if ok then
@@ -85,7 +85,7 @@ function M.delete_action(picker)
           require("noctis.buffers").delete(buf, { force = true })
         end
       else
-        U.error("Silinemedi: " .. tostring(err))
+        U.error("Could not delete: " .. tostring(err))
       end
       Tree:refresh(vim.fs.dirname(path))
     end

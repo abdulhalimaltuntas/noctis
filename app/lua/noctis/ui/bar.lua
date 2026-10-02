@@ -1,7 +1,7 @@
--- Winbar/statusline parçalarını pencere genişliğine sığdırır.
--- Parçalar öncelik sırasına göre (yüksek `drop` önce) atılır; kalan uzun
--- metin sondan kısaltılır. Böylece önemli bilgi (sekmeler, etiket) soldan
--- kırpılmaz.
+-- Fits winbar/statusline parts to the window width.
+-- Parts are dropped by priority (highest `drop` first); remaining long text
+-- is shortened from the end. This way important information (tabs, labels)
+-- is never cut off from the left.
 local M = {}
 
 local function esc(s)
@@ -9,11 +9,11 @@ local function esc(s)
 end
 
 ---@class noctis.BarPart
----@field text string     görünen metin (ham, kaçışsız)
----@field hl? string      highlight grubu
----@field drop? integer   0 = asla atma; büyük değer önce atılır
----@field click? string   %N@fn@ öneki (isteğe bağlı)
----@field right? boolean  sağa yaslı bölüm
+---@field text string     visible text (raw, unescaped)
+---@field hl? string      highlight group
+---@field drop? integer   0 = never drop; higher values are dropped first
+---@field click? string   %N@fn@ prefix (optional)
+---@field right? boolean  right-aligned section
 
 ---@param parts noctis.BarPart[]
 ---@param width integer
@@ -31,7 +31,7 @@ function M.build(parts, width)
     end
     return w
   end
-  -- Sığana kadar en yüksek drop değerli parçayı at
+  -- Drop the part with the highest drop value until everything fits
   while total() > width do
     local best, bi = 0, nil
     for i, p in ipairs(parts) do
@@ -44,7 +44,7 @@ function M.build(parts, width)
     end
     keep[bi] = false
   end
-  -- Hâlâ sığmıyorsa en uzun atılamaz parçayı kısalt
+  -- If it still doesn't fit, shorten the longest non-droppable part
   local over = total() - width
   if over > 0 then
     local li, lw = nil, 0

@@ -1,7 +1,7 @@
--- Git: dal bilgisi, değişen dosyalar, dosya diff'i. Lazygit isteğe bağlıdır;
--- yokken temel Git özeti ve diff işlevleri çalışır. Commit/push gibi işlemler
--- yalnız kullanıcı tarafından açıkça başlatılır (NOCTIS bunları kendisi yapmaz).
--- Git deposu olmayan klasörde tüm işlevler sessizce devre dışı kalır.
+-- Git: branch info, changed files, file diff. Lazygit is optional; without it
+-- the basic Git summary and diff features work. Operations such as commit/push
+-- are only started explicitly by the user (NOCTIS never does them itself).
+-- In a folder that isn't a Git repository, every feature is quietly disabled.
 local M = {}
 
 local U = require("noctis.util")
@@ -24,7 +24,7 @@ function M.toplevel(r)
   return vim.trim(res.stdout or "")
 end
 
---- Statusline için önbellekli dal adı (asenkron yenilenir)
+--- Cached branch name for the statusline (refreshed asynchronously)
 function M.cached_branch()
   local r = root()
   local c = cache[r]
@@ -61,7 +61,7 @@ function M.status_entries(r)
       local x, y, path = p:sub(1, 1), p:sub(2, 2), p:sub(4)
       items[#items + 1] = { x = x, y = y, path = path }
       if x == "R" or x == "C" then
-        i = i + 1 -- yeniden adlandırmada eski ad ayrı alan olarak gelir
+        i = i + 1 -- on a rename the old name comes as a separate field
       end
     end
     i = i + 1
@@ -69,16 +69,16 @@ function M.status_entries(r)
   return items, branch
 end
 
---- Yerel Git özeti (lazygit yokken)
+--- Local Git summary (when lazygit isn't available)
 function M.summary()
   local r = M.toplevel()
   if not r then
-    U.info("Bu klasör bir Git deposu değil.")
+    U.info("This folder isn't a Git repository.")
     return
   end
   local items, branch = M.status_entries(r)
   if not items then
-    U.error("git status çalıştırılamadı.")
+    U.error("Could not run git status.")
     return
   end
   local staged, unstaged, untracked = {}, {}, {}
@@ -102,7 +102,7 @@ function M.summary()
     end
   end
   add("Git: " .. (branch or "?"))
-  add("Depo: " .. vim.fn.fnamemodify(r, ":~"))
+  add("Repository: " .. vim.fn.fnamemodify(r, ":~"))
   add("")
   local function section(title, list, code)
     add(("%s (%d)"):format(title, #list))
@@ -111,20 +111,20 @@ function M.summary()
     end
     add("")
   end
-  section("Hazırlanmış (staged)", staged, function(it)
+  section("Staged", staged, function(it)
     return it.x
   end)
-  section("Değiştirilmiş (unstaged)", unstaged, function(it)
+  section("Modified (unstaged)", unstaged, function(it)
     return it.y
   end)
-  section("İzlenmeyen (untracked)", untracked, function()
+  section("Untracked", untracked, function()
     return "?"
   end)
-  add("Enter: dosyayı aç · d: diff · q: kapat")
+  add("Enter: open file · d: diff · q: close")
   if not U.has("lazygit") then
-    add("Lazygit kurulu değil; ayrıntılı işlemler için kurabilirsiniz (isteğe bağlı).")
+    add("Lazygit isn't installed; you can install it for advanced operations (optional).")
   end
-  local buf, win = require("noctis.ui.float").text(lines, { title = "Git özeti", ft = "noctis-git", width = 90 })
+  local buf, win = require("noctis.ui.float").text(lines, { title = "Git summary", ft = "noctis-git", width = 90 })
   local function target()
     return targets[api.nvim_win_get_cursor(win)[1]]
   end
@@ -157,7 +157,7 @@ function M.status()
   local ok, Snacks = pcall(require, "snacks")
   if ok and Snacks.picker and not U.is_safe_mode() then
     if not M.toplevel() then
-      U.info("Bu klasör bir Git deposu değil.")
+      U.info("This folder isn't a Git repository.")
       return
     end
     return Snacks.picker.git_status({ cwd = M.toplevel() })
@@ -165,18 +165,18 @@ function M.status()
   M.summary()
 end
 
---- Dosya diff'i: sol = index (yoksa HEAD) sürümü, sağ = çalışma kopyası.
---- Index'e veya çalışma ağacına yazmaz.
+--- File diff: left = the index (or HEAD) version, right = the working copy.
+--- Never writes to the index or the working tree.
 function M.diff_file()
   local buf = api.nvim_get_current_buf()
   local path = api.nvim_buf_get_name(buf)
   if path == "" or vim.bo[buf].buftype ~= "" then
-    U.info("Diff için bir dosya açın.")
+    U.info("Open a file to diff.")
     return
   end
   local r = M.toplevel(vim.fn.fnamemodify(path, ":h"))
   if not r then
-    U.info("Dosya bir Git deposunda değil.")
+    U.info("The file isn't in a Git repository.")
     return
   end
   local rel = U.relpath(r, path)
@@ -187,7 +187,7 @@ function M.diff_file()
     label = "HEAD"
   end
   if res.code ~= 0 then
-    U.info("Dosya Git'te izlenmiyor (yeni dosya); karşılaştırılacak sürüm yok.")
+    U.info("The file isn't tracked by Git (new file); there's no version to compare with.")
     return
   end
   local text = res.stdout or ""
@@ -200,22 +200,22 @@ function M.diff_file()
   end
   vim.cmd("tab split")
   vim.cmd("diffthis")
-  vim.wo.winbar = "%#NoctisAccent# ÇALIŞMA KOPYASI %#NoctisMuted# " .. rel
+  vim.wo.winbar = "%#NoctisAccent# WORKING COPY %#NoctisMuted# " .. rel
   vim.cmd("leftabove vnew")
   local scratch = api.nvim_get_current_buf()
-  vim.bo[scratch].buflisted = false -- geçici buffer sekme çubuğunda görünmesin
+  vim.bo[scratch].buflisted = false -- keep the temporary buffer out of the tab bar
   api.nvim_buf_set_lines(scratch, 0, -1, false, lines)
   vim.bo[scratch].buftype = "nofile"
   vim.bo[scratch].bufhidden = "wipe"
   vim.bo[scratch].modifiable = false
   vim.bo[scratch].filetype = vim.bo[buf].filetype
   vim.cmd("diffthis")
-  vim.wo.winbar = ("%%#NoctisWarning# GIT %s %%#NoctisMuted# salt okunur · ]c/[c: farklar · :tabclose"):format(label:upper())
+  vim.wo.winbar = ("%%#NoctisWarning# GIT %s %%#NoctisMuted# read-only · ]c/[c: changes · :tabclose"):format(label:upper())
   vim.cmd("wincmd l")
 end
 
 function M.reset_hunk()
-  if vim.fn.confirm("İmleçteki Git hunk'ı index sürümüne döndürülsün mü? (u ile geri alınabilir)", "&Evet\n&Hayır", 2) == 1 then
+  if vim.fn.confirm("Reset the Git hunk under the cursor to the index version? (undo with u)", "&Yes\n&No", 2) == 1 then
     require("gitsigns").reset_hunk()
   end
 end

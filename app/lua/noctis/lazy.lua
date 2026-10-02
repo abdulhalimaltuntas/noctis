@@ -1,6 +1,6 @@
--- lazy.nvim önyüklemesi.
--- Normal açılış ağ isteği yapmaz: lazy.nvim veya eklentiler eksikse editör
--- temel modda açılır ve kullanıcı `noctis --setup` komutuna yönlendirilir.
+-- lazy.nvim bootstrap.
+-- A normal launch makes no network requests: if lazy.nvim or plugins are
+-- missing, the editor opens in basic mode and points the user to `noctis --setup`.
 local M = {}
 
 local U = require("noctis.util")
@@ -12,7 +12,7 @@ local function read_lock()
   return U.json_read(M.lockfile) or {}
 end
 
---- Kurulum modunda lazy.nvim'i kilit dosyasındaki commit'e göre klonla.
+--- In setup mode, clone lazy.nvim at the commit from the lockfile.
 function M.bootstrap()
   if vim.uv.fs_stat(M.lazypath) then
     return true
@@ -20,12 +20,12 @@ function M.bootstrap()
   local lock = read_lock()
   local commit = lock["lazy.nvim"] and lock["lazy.nvim"].commit
   local branch = lock["lazy.nvim"] and lock["lazy.nvim"].branch or "stable"
-  io.stdout:write(("• lazy.nvim indiriliyor (%s)\n"):format(commit and commit:sub(1, 7) or branch))
+  io.stdout:write(("• downloading lazy.nvim (%s)\n"):format(commit and commit:sub(1, 7) or branch))
   local res = vim
     .system({ "git", "clone", "--filter=blob:none", "--branch=" .. branch, "https://github.com/folke/lazy.nvim.git", M.lazypath }, { text = true })
     :wait(180000)
   if res.code ~= 0 then
-    io.stderr:write("lazy.nvim indirilemedi:\n" .. (res.stderr or "") .. "\n")
+    io.stderr:write("could not download lazy.nvim:\n" .. (res.stderr or "") .. "\n")
     vim.fn.delete(M.lazypath, "rf")
     return false
   end
@@ -48,9 +48,9 @@ function M.setup()
         once = true,
         callback = function()
           U.warn(
-            "Eklentiler henüz kurulmamış; temel modda çalışılıyor.\n"
-              .. "Kurmak için terminalde: noctis --setup  (ağ gerekir)\n"
-              .. "Ayrıntı: noctis --doctor"
+            "Plugins are not installed yet; running in basic mode.\n"
+              .. "To install, run in a terminal: noctis --setup  (needs network)\n"
+              .. "Details: noctis --doctor"
           )
         end,
       })
@@ -64,14 +64,14 @@ function M.setup()
     spec = { { import = "noctis.plugins" } },
     lockfile = M.lockfile,
     defaults = { lazy = true },
-    -- Eksik eklentiler yalnız `noctis --setup` ile kurulur.
+    -- Missing plugins are installed only by `noctis --setup`.
     install = { missing = setup_mode, colorscheme = {} },
-    checker = { enabled = false }, -- arka planda güncelleme denetimi yok
+    checker = { enabled = false }, -- no background update checks
     change_detection = { enabled = false },
     rocks = { enabled = false },
     ui = {
       border = icons.border_opt(),
-      title = " NOCTIS eklentileri ",
+      title = " NOCTIS plugins ",
       icons = not icons.enabled() and {
         cmd = ":",
         config = "cfg",
@@ -115,7 +115,7 @@ function M.setup()
         end
         if #missing > 0 then
           table.sort(missing)
-          U.warn(("%d eklenti kurulu değil: %s\nKurmak için: noctis --setup"):format(#missing, table.concat(missing, ", ")))
+          U.warn(("%d plugins are not installed: %s\nTo install: noctis --setup"):format(#missing, table.concat(missing, ", ")))
         end
       end,
     })

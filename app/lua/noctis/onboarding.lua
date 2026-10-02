@@ -1,18 +1,18 @@
--- Bir dakikalık rehber. Köşede odak almayan küçük bir panel; adımlar gerçek
--- eylemlerle tamamlanır. İlk açılışta bir kez gösterilir; Space h t ile
--- istenildiği zaman açılır/kapanır.
+-- One-minute tour. A small corner panel that never takes focus; steps are
+-- completed by actually doing them. Shown once on first launch; toggle it
+-- any time with Space h t.
 local M = {}
 
 local api = vim.api
 local U = require("noctis.util")
 
 local steps = {
-  { text = "Dosya aç: Space f f (veya başlangıçta f)", event = "file" },
-  { text = "Yazmaya başla: i  → INSERT modu", event = "InsertEnter" },
-  { text = "Normal moda dön: Esc", event = "InsertLeave" },
-  { text = "Kaydet: Space f s", event = "BufWritePost" },
-  { text = "Komut paletini aç: Space Space", event = "palette" },
-  { text = "Güvenli çıkış: Space q q (kaydedilmemişleri sorar)", event = "final" },
+  { text = "Open a file: Space f f (or f on the dashboard)", event = "file" },
+  { text = "Start typing: i  → INSERT mode", event = "InsertEnter" },
+  { text = "Back to Normal mode: Esc", event = "InsertLeave" },
+  { text = "Save: Space f s", event = "BufWritePost" },
+  { text = "Open the command palette: Space Space", event = "palette" },
+  { text = "Quit safely: Space q q (asks about unsaved files)", event = "final" },
 }
 
 M.state = nil ---@type {i:integer, buf:integer, win:integer, group:integer}?
@@ -40,7 +40,7 @@ local function draw()
     hls[#hls + 1] = i < s.i and "NoctisSuccess" or (i == s.i and "NoctisBold" or "NoctisMuted")
   end
   lines[#lines + 1] = ""
-  lines[#lines + 1] = s.i > #steps and " Hazırsınız! Yardım: Space ?  · kapat: Space h t" or " Atlamak/kapatmak: Space h t "
+  lines[#lines + 1] = s.i > #steps and " You're all set! Help: Space ?  · close: Space h t" or " Skip/close: Space h t "
   hls[#hls + 1] = "NoctisDim"
   hls[#hls + 1] = "NoctisDim"
   vim.bo[s.buf].modifiable = true
@@ -69,7 +69,7 @@ local function draw()
     cfg.style = "minimal"
     cfg.focusable = false
     cfg.border = require("noctis.ui.icons").border()
-    cfg.title = " Rehber "
+    cfg.title = " Tour "
     cfg.title_pos = "center"
     cfg.zindex = 40
     cfg.noautocmd = true
@@ -87,7 +87,7 @@ local function advance(event)
   if cur and cur.event == event then
     s.i = s.i + 1
     if s.i == #steps then
-      -- Son adım bilgi amaçlı: çıkmayı denemeden tamamlanır
+      -- The last step is informational: it completes without trying to quit
       s.i = #steps + 1
       mark_done()
     end
@@ -142,7 +142,7 @@ function M.start()
     end,
   })
   api.nvim_create_autocmd("VimResized", { group = group, callback = vim.schedule_wrap(draw) })
-  -- Zaten bir dosya açıksa ilk adım tamam sayılır
+  -- If a file is already open, the first step counts as done
   local cur = api.nvim_get_current_buf()
   if vim.bo[cur].buftype == "" and api.nvim_buf_get_name(cur) ~= "" then
     M.state.i = 2
@@ -150,7 +150,7 @@ function M.start()
   draw()
 end
 
---- İlk açılışta (bir kez) rehberi göster
+--- Show the tour on first launch (once)
 function M.maybe_start()
   if not require("noctis.config").options.welcome or #vim.api.nvim_list_uis() == 0 then
     return

@@ -1,4 +1,4 @@
--- Ortak açılır pencere: ekrana sığar, Esc/q ile kapanır, temaya uyar.
+-- Shared popup window: fits the screen, closes with Esc/q, follows the theme.
 local M = {}
 
 local api = vim.api
@@ -31,7 +31,7 @@ function M.text(lines, opts)
     border = require("noctis.ui.icons").border(),
     title = opts.title and (" " .. opts.title .. " ") or nil,
     title_pos = "center",
-    footer = opts.footer or " q / Esc: kapat ",
+    footer = opts.footer or " q / Esc: close ",
     footer_pos = "right",
     zindex = 60,
   })

@@ -1,10 +1,10 @@
--- Sistem panosu: kullanılabiliyorsa kullan; değilse açıkça bildir ve
--- editörün kendi kayıtlarıyla (registers) çalışmaya devam et.
+-- System clipboard: use it when available; otherwise say so clearly and keep
+-- working with the editor's own registers.
 local M = {}
 
 M.state = "unknown" ---@type "unknown"|"system"|"internal"|"unavailable"
 
---- Sağlayıcı algılaması başlangıcı yavaşlatmasın diye ertelenir.
+--- Provider detection is deferred so it doesn't slow down startup.
 function M.setup()
   local mode = require("noctis.config").options.clipboard
   if mode == "internal" then
@@ -21,8 +21,8 @@ function M.setup()
         once = true,
         callback = function()
           require("noctis.util").info(
-            "Sistem panosu kullanılamıyor (xclip, xsel veya wl-clipboard bulunamadı).\n"
-              .. "Kopyalanan metin NOCTIS içi kayıtlarda; p ile yapıştırabilirsiniz. Ayrıntı: noctis --doctor"
+            "System clipboard is not available (xclip, xsel or wl-clipboard not found).\n"
+              .. "Yanked text stays in NOCTIS registers; paste it with p. Details: noctis --doctor"
           )
         end,
       })
@@ -35,7 +35,7 @@ function M.provider()
     return nil
   end
   local ok, name = pcall(vim.fn["provider#clipboard#Executable"])
-  return ok and name ~= "" and name or "bilinmiyor"
+  return ok and name ~= "" and name or "unknown"
 end
 
 return M

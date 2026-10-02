@@ -1,9 +1,9 @@
--- İnceleme kayıtlarının yerel deposu.
--- Konum: stdpath("state")/noctis/ai/<proje-anahtarı>/  (proje dışında, 0700)
---   blobs/<sha256>          içerik (adreslenebilir, tekrarsız)
---   intervals/<id>.json     başlangıç manifesti + inceleme durumu
---   active.json             projenin etkin aralığı
--- Saklama süresi ve toplam boyut sınırlıdır (config: ai.retention_days, ai.max_store_mb).
+-- Local store for review records.
+-- Location: stdpath("state")/noctis/ai/<project-key>/  (outside the project, 0700)
+--   blobs/<sha256>          content (content-addressed, deduplicated)
+--   intervals/<id>.json     baseline manifest + review state
+--   active.json             the project's active interval
+-- Retention time and total size are limited (config: ai.retention_days, ai.max_store_mb).
 local M = {}
 
 local U = require("noctis.util")
@@ -13,7 +13,7 @@ function M.key(root)
   return vim.fn.sha256(root):sub(1, 16)
 end
 
---- Dizin oluşturmadan yol (yalnız okuma/kontrol için)
+--- Path without creating the directory (for reads/checks only)
 function M.path(root)
   return vim.fn.stdpath("state") .. "/noctis/ai/" .. M.key(root)
 end
@@ -31,7 +31,7 @@ function M.hash(data)
   return vim.fn.sha256(data)
 end
 
---- İçeriği sakla, hash döndür
+--- Store content, return its hash
 function M.put_blob(root, data)
   local h = M.hash(data)
   local path = M.dir(root, "blobs") .. "/" .. h
@@ -65,7 +65,7 @@ function M.set_active(root, id)
   U.json_write(M.dir(root) .. "/active.json", { id = id, root = root, at = os.time() })
 end
 
---- Eski aralıkları ve sahipsiz blob'ları temizle (arka planda çağrılır).
+--- Clean up old intervals and orphaned blobs (called in the background).
 function M.gc(root, keep_id)
   local cfg = require("noctis.config").options.ai
   local idir = M.dir(root, "intervals")
@@ -111,7 +111,7 @@ function M.gc(root, keep_id)
       blobs[#blobs + 1] = name
     end
   end
-  -- Boyut sınırı aşıldıysa en eski aralıkları (etkin olan hariç) bırak
+  -- If the size limit is exceeded, drop the oldest intervals (except the active one)
   if total > cfg.max_store_mb * 1024 * 1024 and #kept > 1 then
     local oldest = kept[#kept]
     if oldest.id ~= keep_id then

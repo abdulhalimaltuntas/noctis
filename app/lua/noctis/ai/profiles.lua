@@ -1,13 +1,13 @@
--- AI CLI profilleri. Varsayılan komutlar bayraksız etkileşimli oturum açar.
--- Ek bayraklar yalnız aracın resmi belgelerinde doğrulanmış olanlardır:
---   Claude Code  claude --version · claude -c (dizindeki son konuşma)
+-- AI CLI profiles. The default commands open an interactive session without flags.
+-- Extra flags are only those verified in the tool's official documentation:
+--   Claude Code  claude --version · claude -c (latest conversation in the directory)
 --     https://code.claude.com/docs/en/cli-reference
 --   Codex CLI    codex --version · codex resume --last
 --     github.com/openai/codex (codex-rs/cli; developers.openai.com/codex/cli)
---   Kimi Code    kimi --version · kimi --continue (dizindeki son oturum)
+--   Kimi Code    kimi --version · kimi --continue (latest session in the directory)
 --     https://www.kimi.com/code/docs/en/kimi-code-cli/reference/kimi-command.html
--- NOCTIS API anahtarı saklamaz, araç izinlerini değiştirmez; oturum açma ve
--- izin istemleri aracın kendi arayüzünde kalır.
+-- NOCTIS stores no API keys and doesn't change tool permissions; login and
+-- permission prompts stay in the tool's own interface.
 local M = {}
 
 M.builtin = {
@@ -16,7 +16,7 @@ M.builtin = {
     cmd = { "claude" },
     version_args = { "--version" },
     resume_args = { "--continue" },
-    install = "curl -fsSL https://claude.ai/install.sh | bash   (veya: npm install -g @anthropic-ai/claude-code)",
+    install = "curl -fsSL https://claude.ai/install.sh | bash   (or: npm install -g @anthropic-ai/claude-code)",
     docs = "https://code.claude.com/docs/en/cli-reference",
   },
   codex = {
@@ -24,7 +24,7 @@ M.builtin = {
     cmd = { "codex" },
     version_args = { "--version" },
     resume_args = { "resume", "--last" },
-    install = "npm install -g @openai/codex   (veya: brew install --cask codex)",
+    install = "npm install -g @openai/codex   (or: brew install --cask codex)",
     docs = "https://developers.openai.com/codex/cli",
   },
   kimi = {
@@ -32,7 +32,7 @@ M.builtin = {
     cmd = { "kimi" },
     version_args = { "--version" },
     resume_args = { "--continue" },
-    install = "curl -fsSL https://code.kimi.com/kimi-code/install.sh | bash   (veya: npm install -g @moonshot-ai/kimi-code)",
+    install = "curl -fsSL https://code.kimi.com/kimi-code/install.sh | bash   (or: npm install -g @moonshot-ai/kimi-code)",
     docs = "https://www.kimi.com/code/docs/en/kimi-code-cli/reference/kimi-command.html",
   },
 }
@@ -51,7 +51,7 @@ local function valid_argv(v)
   return true
 end
 
---- Varsayılan + kullanıcı profilleri (kullanıcı alanları varsayılanı ezer)
+--- Default + user profiles (user fields override the defaults)
 ---@return table<string, table>, string[] order, string[] errors
 function M.all()
   local user = require("noctis.config").options.ai.profiles or {}
@@ -70,11 +70,11 @@ function M.all()
         return n ~= name
       end, order)
     elseif type(p) ~= "table" then
-      errors[#errors + 1] = ("ai.profiles.%s bir tablo olmalı"):format(name)
+      errors[#errors + 1] = ("ai.profiles.%s must be a table"):format(name)
     else
       local merged = vim.tbl_extend("force", out[name] or {}, p)
       if not valid_argv(merged.cmd) then
-        errors[#errors + 1] = ("ai.profiles.%s.cmd bir argüman dizisi olmalı, ör. { \"aider\", \"--no-auto-commits\" }"):format(name)
+        errors[#errors + 1] = ("ai.profiles.%s.cmd must be an argument list, e.g. { \"aider\", \"--no-auto-commits\" }"):format(name)
       else
         merged.label = merged.label or name
         out[name] = merged
@@ -94,7 +94,7 @@ function M.get(name)
   return (M.all())[name]
 end
 
---- Executable yolu (bulunamazsa nil)
+--- Executable path (nil if not found)
 function M.resolve(p)
   local exe = p.cmd[1]
   if exe:find("/") then
@@ -104,15 +104,15 @@ function M.resolve(p)
   return path ~= "" and path or nil
 end
 
---- Sürüm sorgusu (AI görevi başlatmaz, ağ/ücretli çağrı yapmaz)
+--- Version query (starts no AI task, makes no network/paid calls)
 ---@param cb fun(version:string?, err:string?)
 function M.version(p, cb)
   local exe = M.resolve(p)
   if not exe then
-    return cb(nil, "bulunamadı")
+    return cb(nil, "not found")
   end
   if not p.version_args then
-    return cb(nil, "sürüm sorgusu tanımlı değil")
+    return cb(nil, "no version query defined")
   end
   local cmd = { exe }
   vim.list_extend(cmd, p.version_args)
@@ -122,7 +122,7 @@ function M.version(p, cb)
       if res.code == 0 then
         cb(text:match("[^\n]+"))
       else
-        cb(nil, ("çıkış %s"):format(tostring(res.code)))
+        cb(nil, ("exit %s"):format(tostring(res.code)))
       end
     end)
   end)

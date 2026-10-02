@@ -1,7 +1,7 @@
--- Proje oturumları: açık dosyalar ve pencere düzeni (bölmeler) yerel olarak
--- saklanır. Geri yükleme yalnız açık kullanıcı eylemiyle yapılır; diske hiçbir
--- şey yazmaz ve kaydedilmemiş buffer'ların üzerine yazmaz. Çalışan shell/AI
--- süreçleri geri getirilmez (bu mümkün değildir).
+-- Project sessions: open files and the window layout (splits) are stored
+-- locally. Restoring happens only on an explicit user action; it writes nothing
+-- to disk and never overwrites unsaved buffers. Running shell/AI processes are
+-- not brought back (that isn't possible).
 local M = {}
 
 local U = require("noctis.util")
@@ -56,14 +56,14 @@ function M.save(opts)
   end
   if #files == 0 then
     if opts and opts.notify then
-      U.info("Kaydedilecek açık dosya yok.")
+      U.info("No open files to save.")
     end
     return
   end
   local cur = api.nvim_buf_get_name(0)
   U.json_write(path_for(root), { root = root, layout = layout, files = files, current = cur, at = os.time() })
   if opts and opts.notify then
-    U.info(("Oturum kaydedildi (%d dosya)."):format(#files))
+    U.info(("Session saved (%d files)."):format(#files))
   end
 end
 
@@ -74,7 +74,7 @@ end
 local function open_file(path)
   local existing = vim.fn.bufnr(path)
   if existing > 0 and api.nvim_buf_is_loaded(existing) then
-    api.nvim_win_set_buf(0, existing) -- açık (ve belki değiştirilmiş) buffer'ı olduğu gibi kullan
+    api.nvim_win_set_buf(0, existing) -- use the open (possibly modified) buffer as is
   else
     vim.cmd("edit " .. vim.fn.fnameescape(path))
   end
@@ -109,10 +109,10 @@ function M.restore()
   local root = require("noctis.project").root()
   local data = U.json_read(path_for(root))
   if not data or not data.files then
-    U.info("Bu proje için kayıtlı oturum yok: " .. vim.fn.fnamemodify(root, ":~"))
+    U.info("No saved session for this project: " .. vim.fn.fnamemodify(root, ":~"))
     return
   end
-  -- Mevcut pencere düzenini, kaydedilmemiş buffer'lara dokunmadan sadeleştir.
+  -- Simplify the current window layout without touching unsaved buffers.
   pcall(function()
     require("noctis.ui.dashboard").close()
   end)
@@ -133,7 +133,7 @@ function M.restore()
   elseif data.current and vim.uv.fs_stat(data.current) then
     open_file(data.current)
   end
-  U.info(("Oturum geri yüklendi (%d dosya%s)."):format(#data.files - missing, missing > 0 and (", " .. missing .. " dosya artık yok") or ""))
+  U.info(("Session restored (%d files%s)."):format(#data.files - missing, missing > 0 and (", " .. missing .. " no longer exist") or ""))
 end
 
 function M.setup()

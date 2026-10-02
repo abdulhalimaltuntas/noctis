@@ -1,5 +1,5 @@
--- Geri alınabilir silme: dosya/klasör NOCTIS durum dizinindeki çöp kutusuna
--- taşınır. Sistem çöp kutusuna bağımlı değildir; tüm platformlarda aynıdır.
+-- Recoverable delete: files/folders are moved to the trash in the NOCTIS state
+-- directory. It doesn't depend on the system trash; it works the same on every platform.
 local M = {}
 
 local U = require("noctis.util")
@@ -22,7 +22,7 @@ function M.move(path)
   path = U.norm(path)
   local st = uv.fs_lstat(path)
   if not st then
-    return false, "bulunamadı"
+    return false, "not found"
   end
   local id = os.date("%Y%m%d-%H%M%S") .. "-" .. tostring(uv.hrtime() % 1e6)
   local slot = dir() .. "/" .. id
@@ -31,18 +31,18 @@ function M.move(path)
   local dest = slot .. "/" .. name
   local ok, err = uv.fs_rename(path, dest)
   if not ok then
-    -- Farklı dosya sistemi (EXDEV): kopyala, sonra kaynağı kaldır.
+    -- Different filesystem (EXDEV): copy, then remove the source.
     local cok, cerr = copy_tree(path, dest)
     if not cok then
       vim.fn.delete(slot, "rf")
       return false, tostring(err) .. " / " .. tostring(cerr)
     end
     if vim.fn.delete(path, st.type == "directory" and "rf" or "") ~= 0 then
-      return false, "kopyalandı ama kaynak silinemedi"
+      return false, "copied but the source could not be removed"
     end
   end
   U.json_write(slot .. "/meta.json", { path = path, name = name, deleted_at = os.time(), type = st.type })
-  U.log("INFO", "çöpe taşındı: " .. path .. " -> " .. dest)
+  U.log("INFO", "moved to trash: " .. path .. " -> " .. dest)
   return true
 end
 
@@ -68,7 +68,7 @@ function M.restore(item)
   local src = item.slot .. "/" .. item.name
   local dest = item.path
   if uv.fs_lstat(dest) then
-    U.error(("`%s` zaten var; geri yükleme üzerine yazmaz."):format(vim.fn.fnamemodify(dest, ":~")))
+    U.error(("`%s` already exists; restoring never overwrites."):format(vim.fn.fnamemodify(dest, ":~")))
     return false
   end
   vim.fn.mkdir(vim.fn.fnamemodify(dest, ":h"), "p")
@@ -76,25 +76,25 @@ function M.restore(item)
   if not ok then
     local cok = copy_tree(src, dest)
     if not cok then
-      U.error("Geri yüklenemedi: " .. tostring(err))
+      U.error("Could not restore: " .. tostring(err))
       return false
     end
   end
   vim.fn.delete(item.slot, "rf")
-  U.info("Geri yüklendi: " .. vim.fn.fnamemodify(dest, ":~:."))
+  U.info("Restored: " .. vim.fn.fnamemodify(dest, ":~:."))
   return true
 end
 
 function M.pick()
   local items = M.list()
   if #items == 0 then
-    U.info("Çöp kutusu boş.")
+    U.info("The trash is empty.")
     return
   end
   vim.ui.select(items, {
-    prompt = "Geri yüklenecek öğe",
+    prompt = "Item to restore",
     format_item = function(it)
-      return ("%s  %s"):format(os.date("%d.%m %H:%M", it.deleted_at), vim.fn.fnamemodify(it.path, ":~:."))
+      return ("%s  %s"):format(os.date("%Y-%m-%d %H:%M", it.deleted_at), vim.fn.fnamemodify(it.path, ":~:."))
     end,
   }, function(it)
     if it then
@@ -103,7 +103,7 @@ function M.pick()
   end)
 end
 
---- Saklama süresi dolan öğeleri kaldır (başlangıçtan sonra, arka planda).
+--- Remove items past the retention period (after startup, in the background).
 function M.prune()
   local limit = os.time() - M.RETENTION_DAYS * 86400
   for _, it in ipairs(M.list()) do

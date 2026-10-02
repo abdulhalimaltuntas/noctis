@@ -1,4 +1,4 @@
--- :Noctis <komut-id> — registry'deki her komut Ex komutu olarak da çağrılabilir.
+-- :Noctis <command-id> — every registry command can also be called as an Ex command.
 local M = {}
 
 function M.setup()
@@ -12,7 +12,7 @@ function M.setup()
     R.run(id)
   end, {
     nargs = "?",
-    desc = "NOCTIS komutu çalıştır (argümansız: komut paleti)",
+    desc = "Run a NOCTIS command (no argument: command palette)",
     complete = function(arg)
       local out = {}
       for _, c in ipairs(R.list) do
@@ -26,7 +26,7 @@ function M.setup()
 
   vim.api.nvim_create_user_command("NoctisConflict", function()
     require("noctis.sync").resolve(0)
-  end, { desc = "Disk/buffer çatışmasını çöz" })
+  end, { desc = "Resolve a disk/buffer conflict" })
 
   vim.api.nvim_create_user_command("NoctisKeys", function()
     local lines = vim.split(R.markdown(), "\n")
@@ -36,16 +36,16 @@ function M.setup()
       for i = #problems, 1, -1 do
         table.insert(lines, 1, "! " .. problems[i])
       end
-      table.insert(lines, 1, "# Kısayol çakışmaları")
+      table.insert(lines, 1, "# Keymap conflicts")
     end
-    require("noctis.ui.float").text(lines, { title = "Kısayollar", ft = "markdown" })
-  end, { desc = "Kısayol listesi ve çakışma raporu" })
+    require("noctis.ui.float").text(lines, { title = "Keymaps", ft = "markdown" })
+  end, { desc = "Keymap list and conflict report" })
 
   vim.api.nvim_create_user_command("NoctisLang", function(opts)
     require("noctis.lang").command(opts.fargs)
   end, {
     nargs = "*",
-    desc = "Dil paketleri: durum / install <dil>",
+    desc = "Language packs: status / install <language>",
     complete = function()
       return vim.list_extend({ "install", "status" }, require("noctis.lang").names())
     end,

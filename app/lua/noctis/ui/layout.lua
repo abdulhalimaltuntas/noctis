@@ -1,7 +1,7 @@
--- Yerleşim: editör odağı, odak modu, quickfix ve ekran boyutuna uyum.
---   80×24   : temel düzenleme; yan paneller kapanır / daralır
---   120×35  : dengeli standart yerleşim
---   160×45+ : geniş önizlemeler, isteğe bağlı ek paneller
+-- Layout: editor focus, focus mode, quickfix and adapting to the screen size.
+--   80×24   : basic editing; side panels close / shrink
+--   120×35  : balanced standard layout
+--   160×45+ : wide previews, optional extra panels
 local M = {}
 
 local api = vim.api
@@ -9,7 +9,7 @@ local U = require("noctis.util")
 
 M.MIN_COLS, M.MIN_LINES = 60, 16
 
---- Sınıf: "tiny" | "small" | "standard" | "wide"
+--- Class: "tiny" | "small" | "standard" | "wide"
 function M.size_class()
   local c, l = vim.o.columns, vim.o.lines
   if c < M.MIN_COLS or l < M.MIN_LINES then
@@ -22,7 +22,7 @@ function M.size_class()
   return "wide"
 end
 
---- Düzenlenebilir ana pencere mi? (dosya veya boş buffer, kayan değil)
+--- Is this an editable main window? (file or empty buffer, not floating)
 function M.is_editor_win(win)
   if not api.nvim_win_is_valid(win) or api.nvim_win_get_config(win).relative ~= "" then
     return false
@@ -31,7 +31,7 @@ function M.is_editor_win(win)
   return vim.bo[buf].buftype == "" and not vim.b[buf].noctis_panel
 end
 
---- Terminal veya panelden editör penceresine dön.
+--- Return from a terminal or panel to the editor window.
 function M.focus_editor()
   if vim.fn.mode() == "t" then
     vim.cmd("stopinsert")
@@ -58,13 +58,13 @@ function M.toggle_qf()
     end
   end
   if #vim.fn.getqflist() == 0 then
-    U.info("Quickfix listesi boş.")
+    U.info("The quickfix list is empty.")
     return
   end
   vim.cmd("botright copen")
 end
 
---- Odak modu: yan panelleri gizle (süreçler çalışmaya devam eder), kodu ortala.
+--- Focus mode: hide side panels (processes keep running), center the code.
 M.focus = false
 function M.toggle_focus()
   M.focus = not M.focus
@@ -81,14 +81,14 @@ function M.toggle_focus()
     local ok, Snacks = pcall(require, "snacks")
     if ok and Snacks.zen then
       Snacks.zen({ toggles = { dim = false, git_signs = false, diagnostics = true } })
-      M.focus = false -- snacks.zen kendi açık/kapalı durumunu yönetir
+      M.focus = false -- snacks.zen manages its own on/off state
       return
     end
     vim.cmd("only")
     vim.o.showtabline = 0
     vim.wo.number = false
     vim.wo.signcolumn = "no"
-    U.info("Odak modu açık (kapatmak: Space u z)")
+    U.info("Focus mode on (turn off: Space u z)")
   else
     vim.o.showtabline = 2
     vim.wo.number = true
@@ -103,14 +103,14 @@ function M.adapt()
     vim.o.showtabline = 0
     if not warned_tiny then
       warned_tiny = true
-      U.warn(("Terminal çok küçük (%d×%d). Temel düzenleme çalışır; paneller gizlendi. Önerilen en az 80×24."):format(vim.o.columns, vim.o.lines))
+      U.warn(("Terminal is too small (%d×%d). Basic editing works; panels are hidden. At least 80×24 is recommended."):format(vim.o.columns, vim.o.lines))
     end
   elseif not M.focus then
     vim.o.showtabline = 2
     warned_tiny = false
   end
   if cls == "tiny" or cls == "small" then
-    -- Dar ekranda kod alanı öncelikli: gezgin kapanır
+    -- On narrow screens the code area comes first: the explorer closes
     if vim.o.columns < 90 then
       pcall(function()
         require("noctis.explorer").close()

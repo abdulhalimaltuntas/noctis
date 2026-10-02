@@ -1,5 +1,5 @@
--- Completion (blink.cmp), LSP yapılandırmaları (nvim-lspconfig), Tree-sitter,
--- formatter yönetimi (conform), araç kurulumu (mason).
+-- Completion (blink.cmp), LSP configs (nvim-lspconfig), Tree-sitter,
+-- formatter management (conform), tool installation (mason).
 return {
   {
     "saghen/blink.cmp",
@@ -9,9 +9,9 @@ return {
       local icons = require("noctis.ui.icons")
       local border = icons.border_opt()
       return {
-        -- Menü kendiliğinden kodu değiştirmez: hiçbir öğe önceden seçili
-        -- değildir ve seçim metni otomatik eklemez. Enter, yalnız bir öğe
-        -- açıkça seçildiyse kabul eder; aksi halde yeni satırdır.
+        -- The menu never changes code on its own: no item is preselected
+        -- and selecting doesn't insert text automatically. Enter accepts only
+        -- when an item was explicitly selected; otherwise it's a new line.
         keymap = {
           preset = "enter",
           ["<Tab>"] = { "select_next", "snippet_forward", "fallback" },
@@ -22,7 +22,7 @@ return {
           menu = {
             border = border,
             draw = {
-              -- Öğenin neden gösterildiği görünür: tür (Function, Variable…) ve kaynak (LSP, Buffer…)
+              -- Why an item is shown stays visible: kind (Function, Variable…) and source (LSP, Buffer…)
               columns = icons.enabled()
                   and { { "label", "label_description", gap = 1 }, { "kind_icon", "kind", gap = 1 }, { "source_name" } }
                 or { { "label", "label_description", gap = 1 }, { "kind" }, { "source_name" } },
@@ -40,7 +40,7 @@ return {
             snippets = { opts = { search_paths = { vim.fn.stdpath("config") .. "/snippets" }, friendly_snippets = false } },
           },
         },
-        -- Rust ikilisi indirmeden çalışan Lua eşleştirici (çevrimdışı güvenli)
+        -- Lua matcher that works without downloading the Rust binary (offline-safe)
         fuzzy = { implementation = "lua" },
         enabled = function()
           return vim.bo.buftype ~= "prompt" and vim.b.completion ~= false
@@ -58,7 +58,7 @@ return {
   {
     "nvim-treesitter/nvim-treesitter",
     branch = "main",
-    lazy = false, -- eklenti tembel yüklemeyi desteklemiyor; yalnız sorgular ve kurucu içerir
+    lazy = false, -- the plugin doesn't support lazy loading; it only contains queries and an installer
     config = function()
       require("nvim-treesitter").setup({})
       require("noctis.lang").setup_treesitter()
@@ -87,7 +87,7 @@ return {
     opts = function()
       local icons = require("noctis.ui.icons")
       return {
-        PATH = "skip", -- PATH'e NOCTIS ekler (lang.setup_path), Mason yüklenmeden de
+        PATH = "skip", -- NOCTIS adds it to PATH (lang.setup_path), even before Mason loads
         ui = {
           border = icons.border_opt(),
           icons = icons.enabled() and nil or { package_installed = "+", package_pending = "~", package_uninstalled = "-" },

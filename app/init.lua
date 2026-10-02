@@ -1,5 +1,5 @@
--- NOCTIS giriş noktası. Launcher bu dosyayı `nvim -u <app>/init.lua` ile yükler.
--- Kullanıcı yapılandırması ayrı tutulur: stdpath("config")/config.lua
+-- NOCTIS entry point. The launcher loads this file with `nvim -u <app>/init.lua`.
+-- User configuration is kept separately: stdpath("config")/config.lua
 
 local home = vim.env.NOCTIS_HOME
 if not home or home == "" then
@@ -13,15 +13,15 @@ local ok, err = xpcall(function()
 end, debug.traceback)
 
 if not ok then
-  -- Gerçek yapılandırma hatalarını yutmayız: logla, göster, güvenli modu öner.
+  -- Real configuration errors are never swallowed: log, show, suggest safe mode.
   pcall(function()
-    require("noctis.util").log("ERROR", "başlatma hatası:\n" .. tostring(err))
+    require("noctis.util").log("ERROR", "startup error:\n" .. tostring(err))
   end)
   vim.schedule(function()
     vim.api.nvim_echo({
-      { "NOCTIS başlatılamadı. ", "ErrorMsg" },
-      { "Ayrıntı: :messages  ·  Log: " .. vim.fn.stdpath("state") .. "/noctis.log\n", "WarningMsg" },
-      { "Eklentisiz açmak için: noctis --safe\n\n", "WarningMsg" },
+      { "NOCTIS failed to start. ", "ErrorMsg" },
+      { "Details: :messages  ·  Log: " .. vim.fn.stdpath("state") .. "/noctis.log\n", "WarningMsg" },
+      { "To start without plugins: noctis --safe\n\n", "WarningMsg" },
       { tostring(err), "ErrorMsg" },
     }, true, {})
   end)

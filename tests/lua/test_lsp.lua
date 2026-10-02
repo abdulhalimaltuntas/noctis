@@ -1,16 +1,16 @@
--- Gerçek dil sunucusuyla (Python: pyright) LSP akışları ve biçimlendirme.
--- Eklentiler kurulu olmalı (noctis --setup) ve pyright-langserver PATH'te olmalı.
+-- LSP flows and formatting with a real language server (Python: pyright).
+-- Plugins must be installed (noctis --setup) and pyright-langserver must be on PATH.
 package.path = vim.env.NOCTIS_HOME .. "/../tests/lua/?.lua;" .. package.path
 local H = require("helpers")
 local api = vim.api
 
 H.suite("LSP: Python (pyright)")
 if vim.fn.executable("pyright-langserver") == 0 then
-  H.note("pyright-langserver yok; LSP testleri atlandı")
+  H.note("no pyright-langserver; LSP tests skipped")
   H.done()
 end
 
-local root = H.tmpdir("lsp proje")
+local root = H.tmpdir("lsp project")
 H.write(root .. "/pyproject.toml", "[project]\nname='t'\n")
 H.write(root .. "/main.py", 'def greet(name):\n    return "hi " + name\n\n\nprint(greet("x"))\nundefined_var\n')
 vim.cmd("cd " .. vim.fn.fnameescape(root))
@@ -19,35 +19,35 @@ vim.cmd("edit main.py")
 local buf = api.nvim_get_current_buf()
 
 local client
-H.test("pyright buffer'a bağlanır (lazy yüklenen lspconfig + vim.lsp.enable)", function()
+H.test("pyright attaches to the buffer (lazy-loaded lspconfig + vim.lsp.enable)", function()
   H.wait(20000, function()
     client = vim.lsp.get_clients({ bufnr = buf, name = "pyright" })[1]
     return client ~= nil and client.initialized
-  end, "pyright bağlantısı")
+  end, "pyright attached")
 end)
 
-H.test("diagnostics gerçek sunucudan gelir", function()
-  -- pyright'ın ilk (soğuk) analizi yük altında 15 sn'yi aşabiliyor
+H.test("diagnostics come from the real server", function()
+  -- pyright's first (cold) analysis can take over 15 s under load
   H.wait(45000, function()
     for _, d in ipairs(vim.diagnostic.get(buf)) do
       if d.message:find("undefined_var", 1, true) then
         return true
       end
     end
-  end, "undefined_var tanılaması")
+  end, "undefined_var diagnostic")
 end)
 
-H.test("tanıma git doğru satırı döndürür", function()
+H.test("go to definition returns the right line", function()
   local params = vim.lsp.util.make_position_params(0, client.offset_encoding)
   params.position = { line = 4, character = 7 }
   local res = client:request_sync("textDocument/definition", params, 10000, buf)
-  H.ok(res and res.result, "yanıt")
+  H.ok(res and res.result, "response")
   local loc = res.result[1] or res.result
   local range = loc.range or loc.targetSelectionRange
-  H.eq(range.start.line, 0, "def greet satırı")
+  H.eq(range.start.line, 0, "the def greet line")
 end)
 
-H.test("completion sunucu önerisi içerir (gre → greet)", function()
+H.test("completion includes the server's suggestion (gre → greet)", function()
   api.nvim_buf_set_lines(buf, 6, 6, false, { "gre" })
   vim.wait(300)
   local params = vim.lsp.util.make_position_params(0, client.offset_encoding)
@@ -60,41 +60,41 @@ H.test("completion sunucu önerisi içerir (gre → greet)", function()
       found = true
     end
   end
-  H.ok(found, "greet önerildi")
+  H.ok(found, "greet suggested")
   api.nvim_buf_set_lines(buf, 6, 7, false, {})
 end)
 
-H.test("rename tüm referansları değiştirir (buffer'da, kaydedilmeden)", function()
+H.test("rename changes every reference (in the buffer, unsaved)", function()
   local params = vim.lsp.util.make_position_params(0, client.offset_encoding)
   params.position = { line = 0, character = 5 }
-  params.newName = "selam"
+  params.newName = "salute"
   local res = client:request_sync("textDocument/rename", params, 10000, buf)
-  H.ok(res and res.result, "rename yanıtı")
+  H.ok(res and res.result, "rename response")
   vim.lsp.util.apply_workspace_edit(res.result, client.offset_encoding)
   local text = table.concat(api.nvim_buf_get_lines(buf, 0, -1, false), "\n")
-  H.ok(text:find("def selam%(") and text:find("print%(selam%("), text)
+  H.ok(text:find("def salute%(") and text:find("print%(salute%("), text)
 end)
 
-H.test("blink.cmp yüklenir ve LSP yeteneklerini sağlar", function()
+H.test("blink.cmp loads and provides LSP capabilities", function()
   local ok, blink = pcall(require, "blink.cmp")
   H.ok(ok, tostring(blink))
   H.ok(blink.get_lsp_capabilities().textDocument.completion ~= nil)
 end)
 
-H.suite("Biçimlendirme (conform + ruff)")
-H.test("Space c f eşdeğeri dosyayı biçimlendirir; kaydederken varsayılan kapalı", function()
+H.suite("Formatting (conform + ruff)")
+H.test("the Space c f equivalent formats the file; format-on-save is off by default", function()
   if vim.fn.executable("ruff") == 0 then
-    H.note("ruff yok; atlandı")
+    H.note("no ruff; skipped")
     return
   end
   local path = root .. "/fmt.py"
   H.write(path, "x=[1,2,\n 3]\n")
   vim.cmd("edit " .. vim.fn.fnameescape(path))
   local b = api.nvim_get_current_buf()
-  -- Kaydetmede biçimlendirme kapalı: içerik aynı kalmalı
+  -- Format-on-save is off: the content must stay the same
   api.nvim_buf_set_lines(b, 0, -1, false, { "y=1" })
   vim.cmd("write")
-  H.eq(H.read(path), "y=1\n", "format-on-save kapalı")
+  H.eq(H.read(path), "y=1\n", "format-on-save off")
   api.nvim_buf_set_lines(b, 0, -1, false, { "x=[1,2,", " 3]" })
   local done, err
   require("conform").format({ bufnr = b, async = true, lsp_format = "fallback" }, function(e)
@@ -107,7 +107,7 @@ H.test("Space c f eşdeğeri dosyayı biçimlendirir; kaydederken varsayılan ka
   H.eq(api.nvim_buf_get_lines(b, 0, -1, false)[1], "x = [1, 2, 3]")
 end)
 
-H.test("format_on_save dosya türüne göre açılınca kayıtta çalışır", function()
+H.test("format_on_save runs on save once enabled for the filetype", function()
   if vim.fn.executable("ruff") == 0 then
     return
   end
@@ -121,16 +121,16 @@ H.test("format_on_save dosya türüne göre açılınca kayıtta çalışır", f
   require("noctis.format").session_ft.python = nil
 end)
 
-H.suite("Söz dizimi")
-H.test("Tree-sitter parser'ı varsa etkin, yoksa Vim söz dizimi yedeği", function()
+H.suite("Syntax")
+H.test("Tree-sitter is active when a parser exists, otherwise the Vim syntax fallback", function()
   vim.cmd("edit " .. vim.fn.fnameescape(root .. "/main.py"))
   local has_ts = require("noctis.lang").has_parser("python")
   if has_ts then
-    H.ok(vim.treesitter.highlighter.active[api.nvim_get_current_buf()] ~= nil, "Tree-sitter etkin")
-    H.note("python parser kurulu: Tree-sitter vurgulama etkin")
+    H.ok(vim.treesitter.highlighter.active[api.nvim_get_current_buf()] ~= nil, "Tree-sitter active")
+    H.note("python parser installed: Tree-sitter highlighting active")
   else
-    H.eq(vim.bo.syntax, "python", "Vim regex söz dizimi")
-    H.note("python parser yok: Vim söz dizimi yedeği kullanılıyor")
+    H.eq(vim.bo.syntax, "python", "Vim regex syntax")
+    H.note("no python parser: using the Vim syntax fallback")
   end
 end)
 

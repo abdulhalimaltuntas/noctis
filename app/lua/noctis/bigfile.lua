@@ -1,10 +1,10 @@
--- Büyük dosya modu: ağır özellikleri (Tree-sitter, LSP, syntax, katlama,
--- satır vurguları) kapatır; dosya düzenlenebilir kalır.
+-- Big file mode: turns off heavy features (Tree-sitter, LSP, syntax, folding,
+-- line highlights); the file stays editable.
 local M = {}
 
 local api = vim.api
 
---- Dosya eşiği aşıyor mu? (BufReadPre'de boyut; satır sayısı okunduktan sonra)
+--- Is the file over the threshold? (size at BufReadPre; line count after reading)
 function M.is_big(path)
   local cfg = require("noctis.config").options.bigfile
   local st = path and path ~= "" and vim.uv.fs_stat(path)
@@ -16,9 +16,9 @@ function M.apply(buf)
     return
   end
   vim.b[buf].noctis_bigfile = true
-  vim.b[buf].completion = false -- blink.cmp bu bayrağa uyar
+  vim.b[buf].completion = false -- blink.cmp respects this flag
   vim.bo[buf].syntax = ""
-  vim.bo[buf].swapfile = true -- kurtarma korunur
+  vim.bo[buf].swapfile = true -- recovery is kept
   pcall(vim.treesitter.stop, buf)
   for _, win in ipairs(vim.fn.win_findbuf(buf)) do
     vim.wo[win].foldmethod = "manual"
@@ -30,7 +30,7 @@ function M.apply(buf)
     pcall(vim.lsp.buf_detach_client, buf, client.id)
   end
   local name = vim.fn.fnamemodify(api.nvim_buf_get_name(buf), ":t")
-  require("noctis.util").info(("Büyük dosya modu: %s — söz dizimi, LSP ve ağır görsel özellikler kapalı."):format(name))
+  require("noctis.util").info(("Big file mode: %s — syntax, LSP and heavy visuals are off."):format(name))
 end
 
 function M.setup(group)
@@ -53,7 +53,7 @@ function M.setup(group)
       end
     end,
   })
-  -- Dosya türü algılaması BufReadPost'tan sonra söz dizimini yeniden açar
+  -- Filetype detection turns syntax back on after BufReadPost
   api.nvim_create_autocmd("FileType", {
     group = group,
     callback = function(ev)
@@ -67,7 +67,7 @@ function M.setup(group)
       end
     end,
   })
-  -- Büyük dosyalarda LSP bağlanmasını engelle
+  -- Prevent LSP from attaching to big files
   api.nvim_create_autocmd("LspAttach", {
     group = group,
     callback = function(ev)

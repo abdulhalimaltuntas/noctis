@@ -1,6 +1,6 @@
--- Satır parçaları (satır sonu karakterleriyle birlikte) üzerinde diff ve
--- hunk işlemleri. Satırlar terminatörleriyle tutulduğu için CRLF ve son
--- satırdaki newline farkı dahil geri alma bayt düzeyinde kesindir.
+-- Diff and hunk operations on line chunks (with their line terminators).
+-- Because lines keep their terminators, reverting is byte-exact, including
+-- CRLF and a missing newline on the last line.
 local M = {}
 
 M.MAX_DIFF_BYTES = 8 * 1024 * 1024
@@ -20,7 +20,7 @@ function M.chunks(text)
   return out
 end
 
---- Görüntüleme için satır (terminatörsüz)
+--- A line for display (without its terminator)
 function M.display(chunk)
   return (chunk:gsub("\r?\n$", ""))
 end
@@ -46,7 +46,7 @@ function M.stats(hunks)
   return adds, dels
 end
 
---- Mevcut metinde yalnız seçilen hunk'ı başlangıç sürümüne döndür.
+--- In the current text, revert only the chosen hunk to the baseline version.
 ---@param base string
 ---@param cur string
 ---@param h integer[]
@@ -68,7 +68,7 @@ function M.revert_hunk(base, cur, h)
   return table.concat(out)
 end
 
---- İmleç satırına (mevcut dosyada) karşılık gelen hunk indeksi
+--- Index of the hunk matching the cursor line (in the current file)
 function M.hunk_at(hunks, line)
   local best, bestd
   for i, h in ipairs(hunks or {}) do
@@ -88,7 +88,7 @@ function M.hunk_at(hunks, line)
   return best, bestd
 end
 
---- Birleşik diff satırları
+--- Unified diff lines
 ---@return string[] lines, {row:integer, kind:string, hunk?:integer, line?:integer}[] meta
 function M.unified(base, cur, hunks, ctx)
   ctx = ctx or 3

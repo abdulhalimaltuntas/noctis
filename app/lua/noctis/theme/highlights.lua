@@ -1,8 +1,8 @@
--- Semantik tokenlardan highlight gruplarını üretir. Bileşenler renk değil,
--- yalnızca bu grupları kullanır; tema değişince her şey birlikte güncellenir.
+-- Builds highlight groups from the semantic tokens. Components never use
+-- colors directly, only these groups; when the theme changes, everything updates together.
 local M = {}
 
----@param c table tokens.derive() çıktısı
+---@param c table output of tokens.derive()
 ---@param opts {transparent:boolean}
 ---@return table<string, vim.api.keyset.highlight>
 function M.build(c, opts)
@@ -11,7 +11,7 @@ function M.build(c, opts)
   local panel = opts.transparent and "NONE" or c.panel
   local h = {}
 
-  -- ── Editör yüzeyi ──────────────────────────────────────────────────────
+  -- ── Editor surface ─────────────────────────────────────────────────────
   h.Normal = { fg = c.fg, bg = bg }
   h.NormalNC = { fg = c.fg, bg = bg }
   h.NormalFloat = { fg = c.fg, bg = c.float }
@@ -71,7 +71,7 @@ function M.build(c, opts)
   h.TabLineFill = { bg = panel }
   h.TabLineSel = { fg = c.fg, bg = bg, bold = true }
 
-  -- Açılır menüler (completion dahil)
+  -- Popup menus (completion included)
   h.Pmenu = { fg = c.fg, bg = c.float }
   h.PmenuSel = { bg = c.accent_bg, bold = true }
   h.PmenuKind = { fg = c.accent2, bg = c.float }
@@ -86,7 +86,7 @@ function M.build(c, opts)
   h.ComplMatchIns = { fg = c.muted }
   h.SnippetTabstop = { bg = c.hint_bg }
 
-  -- Diff: ekleme/silme/değişiklik anlamları sabittir.
+  -- Diff: the meanings of add/delete/change are fixed.
   h.DiffAdd = { bg = c.diff_add }
   h.DiffDelete = { fg = c.diff_del_text, bg = c.diff_del }
   h.DiffChange = { bg = c.diff_change }
@@ -107,7 +107,7 @@ function M.build(c, opts)
   h.SpellLocal = { sp = c.accent2, undercurl = true }
   h.SpellRare = { sp = c.accent, undercurl = true }
 
-  -- ── Söz dizimi (Vim regex + Tree-sitter ortak) ────────────────────────
+  -- ── Syntax (shared by Vim regex + Tree-sitter) ────────────────────────
   h.Comment = { fg = s.comment, italic = true }
   h.Constant = { fg = s.number }
   h.String = { fg = s.string }
@@ -206,7 +206,7 @@ function M.build(c, opts)
   h["@lsp.type.comment"] = {}
   h["@lsp.mod.deprecated"] = { strikethrough = true }
 
-  -- ── Diagnostics: renk + simge/etiket birlikte ──────────────────────────
+  -- ── Diagnostics: color + symbol/label together ─────────────────────────
   h.DiagnosticError = { fg = c.error }
   h.DiagnosticWarn = { fg = c.warning }
   h.DiagnosticInfo = { fg = c.info }
@@ -229,7 +229,7 @@ function M.build(c, opts)
   h.LspInlayHint = { fg = c.fg_dim, bg = c.cursorline, italic = true }
   h.LspCodeLens = { fg = c.fg_dim }
 
-  -- ── Eklentiler ─────────────────────────────────────────────────────────
+  -- ── Plugins ────────────────────────────────────────────────────────────
   h.GitSignsAdd = { fg = c.success }
   h.GitSignsChange = { fg = s.type }
   h.GitSignsDelete = { fg = c.error }
@@ -260,7 +260,7 @@ function M.build(c, opts)
   h.SnacksPickerGitStatusIgnored = { fg = c.fg_dim }
   h.SnacksPickerPathHidden = { fg = c.fg_dim }
   h.SnacksPickerPathIgnored = { fg = c.fg_dim, italic = true }
-  -- Gezgin yan paneli: panel zemini
+  -- Explorer side panel: panel background
   h.NoctisExplorer = { fg = c.fg, bg = panel }
   h.NoctisExplorerBorder = { fg = c.border, bg = panel }
   h.NoctisExplorerTitle = { fg = c.accent, bg = panel, bold = true }
@@ -327,7 +327,7 @@ function M.build(c, opts)
   h.MasonMuted = { fg = c.muted }
   h.MasonMutedBlock = { fg = c.muted, bg = c.cursorline }
 
-  -- ── NOCTIS bileşenleri ─────────────────────────────────────────────────
+  -- ── NOCTIS components ──────────────────────────────────────────────────
   h.NoctisAccent = { fg = c.accent }
   h.NoctisAccent2 = { fg = c.accent2 }
   h.NoctisMuted = { fg = c.muted }
@@ -337,7 +337,7 @@ function M.build(c, opts)
   h.NoctisError = { fg = c.error }
   h.NoctisBold = { fg = c.fg, bold = true }
   h.NoctisFlash = { bg = c.flash }
-  -- Yazma animasyonu: vurgu renginden satır zeminine sönen basamaklar
+  -- Typing animation: steps fading from the accent to the line background
   for i, col in ipairs(c.type_glow) do
     h["NoctisType" .. i] = { bg = col }
   end
@@ -378,7 +378,7 @@ function M.build(c, opts)
   h.NoctisStBadge = { fg = c.bg, bg = c.warning, bold = true }
   h.NoctisStSep = { fg = c.border, bg = stbg }
 
-  -- Tabline (buffer listesi)
+  -- Tabline (buffer list)
   h.NoctisTabActive = { fg = c.fg, bg = bg, bold = true }
   h.NoctisTabActiveMark = { fg = c.accent, bg = bg, bold = true }
   h.NoctisTabInactive = { fg = c.muted, bg = panel }
@@ -388,13 +388,13 @@ function M.build(c, opts)
   h.NoctisTabRight = { fg = c.muted, bg = panel }
   h.NoctisTabPage = { fg = c.bg, bg = c.accent2, bold = true }
 
-  -- Komut paleti
+  -- Command palette
   h.NoctisPaletteKey = { fg = c.accent, bold = true }
   h.NoctisPaletteGroup = { fg = c.accent2 }
   h.NoctisPaletteDesc = { fg = c.muted }
   h.NoctisPaletteUnavailable = { fg = c.fg_dim, italic = true }
 
-  -- AI Workbench ve değişiklik inceleme
+  -- AI Workbench and change review
   h.NoctisAIHeader = { fg = c.fg, bg = c.panel, bold = true }
   h.NoctisAITabActive = { fg = c.bg, bg = c.accent, bold = true }
   h.NoctisAITabInactive = { fg = c.muted, bg = c.cursorline }
@@ -420,7 +420,7 @@ function M.build(c, opts)
   return h
 end
 
---- Entegre terminal için 16 renkli ANSI paleti
+--- 16-color ANSI palette for the integrated terminal
 function M.terminal_colors(c)
   local s = c.syntax
   return {

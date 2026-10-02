@@ -1,6 +1,6 @@
--- Tema varyantları yalnızca temel tokenları tanımlar. Seçim, arama, diff,
--- diagnostics arka planları gibi türetilmiş tonlar `theme/tokens.lua` içinde
--- aynı formülle üretilir; böylece üç tema tek bir tasarım sistemini paylaşır.
+-- Theme variants only define the base tokens. Derived tones such as the
+-- selection, search, diff and diagnostics backgrounds are produced in
+-- `theme/tokens.lua` with the same formulas, so all three themes share one design system.
 local M = {}
 
 M.order = { "midnight-violet", "glacier", "amber" }
@@ -12,18 +12,18 @@ M.labels = {
 }
 
 M["midnight-violet"] = {
-  bg = "#0B1020", -- editör zemini
-  panel = "#11182A", -- gezgin, yan paneller
-  float = "#182238", -- komut paleti, açılır pencereler
+  bg = "#0B1020", -- editor background
+  panel = "#11182A", -- explorer, side panels
+  float = "#182238", -- command palette, popups
   border = "#2A3652",
   fg = "#DCE5F5",
   muted = "#8D9BB5",
-  accent = "#A78BFA", -- ana vurgu (mor)
-  accent2 = "#67E8F9", -- ikincil vurgu (camgöbeği)
+  accent = "#A78BFA", -- primary accent (violet)
+  accent2 = "#67E8F9", -- secondary accent (cyan)
   success = "#9AE6B4",
   warning = "#F6C177",
   error = "#F7768E",
-  -- Söz dizimi: ölçülü, 6 ton + metin tonları
+  -- Syntax: restrained, 6 hues + text tones
   syntax = {
     keyword = "#B69CFF",
     func = "#7DD8F0",

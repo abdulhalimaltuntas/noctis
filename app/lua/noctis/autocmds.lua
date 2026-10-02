@@ -1,4 +1,4 @@
--- Çekirdek otomatik komutlar.
+-- Core autocommands.
 local M = {}
 
 local api = vim.api
@@ -10,7 +10,7 @@ function M.setup()
   require("noctis.bigfile").setup(group)
   require("noctis.clipboard").setup()
 
-  -- Kopyalanan bölgeyi kısa süre göster
+  -- Briefly highlight the yanked region
   api.nvim_create_autocmd("TextYankPost", {
     group = group,
     callback = function()
@@ -18,7 +18,7 @@ function M.setup()
     end,
   })
 
-  -- Dosya tekrar açıldığında son konuma dön
+  -- Return to the last position when a file is reopened
   api.nvim_create_autocmd("BufReadPost", {
     group = group,
     callback = function(ev)
@@ -34,7 +34,7 @@ function M.setup()
     end,
   })
 
-  -- Kaydederken eksik üst klasörleri oluştur (yalnız normal dosyalar)
+  -- Create missing parent folders on save (regular files only)
   api.nvim_create_autocmd("BufWritePre", {
     group = group,
     callback = function(ev)
@@ -48,17 +48,17 @@ function M.setup()
     end,
   })
 
-  -- Yardım/liste pencereleri q ile kapanır
+  -- Help/list windows close with q
   api.nvim_create_autocmd("FileType", {
     group = group,
     pattern = { "help", "qf", "checkhealth", "man", "lspinfo", "notify", "startuptime", "git", "noctis-info" },
     callback = function(ev)
       vim.bo[ev.buf].buflisted = false
-      vim.keymap.set("n", "q", "<cmd>close<cr>", { buffer = ev.buf, silent = true, desc = "Kapat" })
+      vim.keymap.set("n", "q", "<cmd>close<cr>", { buffer = ev.buf, silent = true, desc = "Close" })
     end,
   })
 
-  -- Terminal buffer'ları: sade görünüm
+  -- Terminal buffers: a plain look
   api.nvim_create_autocmd("TermOpen", {
     group = group,
     callback = function(ev)
@@ -71,11 +71,11 @@ function M.setup()
     end,
   })
 
-  -- Pencere boyutu değişince bölmeleri dengele ve yerleşimi uyarla.
-  -- Odak ve mod korunur: terminal/AI aracı yazma modundaysa (Ctrl-C, Esc
-  -- uygulamaya gitmeli) yeniden boyutlandırmadan sonra da öyle kalır.
-  -- `tabdo` pencereler arasında dolaşıp terminal modunu bitirdiği için diğer
-  -- sekmeler ilk girişte dengelenir.
+  -- Rebalance splits and adapt the layout when the window size changes.
+  -- Focus and mode are kept: if a terminal/AI tool was in insert mode (Ctrl-C
+  -- and Esc must reach the application), it stays that way after the resize.
+  -- Because `tabdo` walks windows and leaves terminal mode, other tabs are
+  -- rebalanced when they're next entered.
   api.nvim_create_autocmd("VimResized", {
     group = group,
     callback = function()
@@ -107,7 +107,7 @@ function M.setup()
     end,
   })
 
-  -- Klasör argümanı (noctis .): klasörü proje olarak aç, gezgini göster
+  -- Folder argument (noctis .): open the folder as a project and show the explorer
   api.nvim_create_autocmd("VimEnter", {
     group = group,
     once = true,
@@ -118,7 +118,7 @@ function M.setup()
         local path = vim.fn.fnamemodify(arg, ":p")
         vim.cmd("cd " .. vim.fn.fnameescape(path))
         if require("noctis.util").is_safe_mode() then
-          return -- netrw klasörü gösterir
+          return -- netrw shows the folder
         end
         vim.cmd("enew")
         if api.nvim_buf_is_valid(dirbuf) and vim.fn.isdirectory(api.nvim_buf_get_name(dirbuf)) == 1 then
@@ -133,7 +133,7 @@ function M.setup()
     end,
   })
 
-  -- Çöp kutusu bakımı arka planda
+  -- Trash maintenance in the background
   vim.defer_fn(function()
     pcall(require("noctis.trash").prune)
   end, 3000)

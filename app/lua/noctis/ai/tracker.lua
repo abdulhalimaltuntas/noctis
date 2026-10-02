@@ -1,13 +1,13 @@
--- İnceleme aralığı takibi (proje kökü başına bir örnek).
+-- Review interval tracking (one instance per project root).
 --
--- Akış: watcher olayı → yol kirli işaretlenir → debounce → yazma durulma
--- denetimi (boyut/mtime iki ölçümde aynı) → başlangıç içeriğiyle karşılaştır →
--- değişiklik listesi güncellenir → açık buffer'lar sync katmanına bildirilir
--- (temiz buffer yeniden yüklenir, kirli buffer çatışmalı işaretlenir).
+-- Flow: watcher event → the path is marked dirty → debounce → write-settle
+-- check (size/mtime equal across two readings) → compare with the baseline content →
+-- the change list is updated → open buffers are notified via the sync layer
+-- (a clean buffer reloads, a dirty buffer is marked as conflicted).
 --
--- Kaçırılan olaylar için: odak dönüşü ve düşük sıklıklı uzlaştırma taraması.
--- Değişikliklerin hangi programdan geldiği bilinmez; etiket her zaman
--- "inceleme aralığında tespit edilen değişiklik"tir.
+-- For missed events: focus regained and a low-frequency reconcile scan.
+-- Which program a change came from is unknown; the label is always
+-- "change detected in the review interval".
 local U = require("noctis.util")
 local store = require("noctis.ai.store")
 local scope = require("noctis.ai.scope")
@@ -26,7 +26,7 @@ M.by_root = {}
 ---@field cur_size? integer
 ---@field binary? boolean
 ---@field large? boolean
----@field no_baseline? string  önceki içerik yoksa gerekçe
+---@field no_baseline? string  reason when there is no previous content
 ---@field adds? integer
 ---@field dels? integer
 ---@field at integer
@@ -75,8 +75,8 @@ function T.new(root, interval)
     self:mark(rel)
   end)
   self.timer = uv.new_timer()
-  -- Uzlaştırma sıklığı son taramanın maliyetine uyarlanır: küçük projede
-  -- reconcile_ms, büyük projede (yavaş tarama) en fazla 60 sn'de bir.
+  -- The reconcile frequency adapts to the cost of the last scan: reconcile_ms
+  -- on small projects, at most once every 60 s on large projects (slow scans).
   self.next_reconcile = 0
   self.timer:start(cfg.reconcile_ms, cfg.reconcile_ms, function()
     vim.schedule(function()
@@ -104,7 +104,7 @@ function T:abs(rel)
   return self.root .. "/" .. rel
 end
 
---- Kullanıcının NOCTIS içinden yaptığı kayıt (bildirim gürültüsünü azaltmak için)
+--- A save the user made from inside NOCTIS (to reduce notification noise)
 function T:note_self_write(abs)
   local rel = U.relpath(self.root, abs)
   if rel then
@@ -112,7 +112,7 @@ function T:note_self_write(abs)
   end
 end
 
----@param rel string  "dizin/" biçimi: dizin altındaki her şeyi yeniden denetle
+---@param rel string  "dir/" form: re-check everything under the directory
 function T:mark(rel)
   if self.stopped then
     return
@@ -134,7 +134,7 @@ function T:mark(rel)
   self.debounced()
 end
 
---- Tek bir yolun durumunu başlangıç kaydıyla karşılaştır.
+--- Compare a single path's state with the baseline.
 function T:compute(rel)
   local cfg = require("noctis.config").options.ai.baseline
   local base = self.interval.files[rel]
@@ -217,7 +217,7 @@ function T:compute(rel)
     set(e)
     return
   end
-  -- Başlangıçta içeriği alınmamış dosya (büyük/hassas/sınır): yalnız metaveri
+  -- A file whose content wasn't recorded at the baseline (large/sensitive/limit): metadata only
   if base_sig(base) == sig(st) or (st.size == base.size and st.mtime.sec == base.mtime and st.mtime.nsec == base.nsec) then
     self.changes[rel] = nil
     return
@@ -242,7 +242,7 @@ function T:process()
   for rel in pairs(batch) do
     first[rel] = sig(uv.fs_lstat(self:abs(rel)))
   end
-  -- Yazma durulma denetimi: kısa süre sonra aynı imza mı?
+  -- Write-settle check: the same signature a moment later?
   vim.defer_fn(function()
     if self.stopped then
       return
@@ -303,7 +303,7 @@ function T:after_change(changed)
   self:flush_notify()
 end
 
---- Bildirimleri topla: en fazla birkaç saniyede bir, kısa tek mesaj.
+--- Batch notifications: at most once every few seconds, one short message.
 function T:flush_notify()
   if not next(self.pending_notify) then
     return
@@ -334,12 +334,12 @@ function T:flush_notify()
   end
   local total = vim.tbl_count(self.changes)
   if require("noctis.ai.review").visible_for(self.root) then
-    return -- değişiklik listesi zaten açık
+    return -- the change list is already open
   end
-  U.info(("%d dosyada değişiklik tespit edildi (aralıkta toplam %d). İncele: Space a d"):format(n, total), { id = "noctis_ai_changes" })
+  U.info(("Changes detected in %d files (%d in the interval). Review: Space a d"):format(n, total), { id = "noctis_ai_changes" })
 end
 
---- Uzlaştırma: dosya listesini ve bilinen imzaları karşılaştırır (asenkron).
+--- Reconcile: compares the file list and the known signatures (asynchronous).
 function T:reconcile(cb)
   if self.stopped or self.reconciling then
     return
@@ -368,7 +368,7 @@ function T:reconcile(cb)
       local overflow = (st.listed or 0) > (st.tracked or 0)
       for rel in pairs(listed) do
         local in_base = self.interval.files[rel] ~= nil
-        -- İzleme sınırı aşıldıysa kayıtta olmayan dosyalar yalnız olaylarla eklenir
+        -- If the watch limit was exceeded, files missing from the record are added only via events
         if in_base or self.changes[rel] or not overflow then
           local known = self.known[rel] or (in_base and base_sig(self.interval.files[rel]))
           if not known or known ~= sig(uv.fs_lstat(self:abs(rel))) then
@@ -431,7 +431,7 @@ function T:mark_reviewed(rel, value)
   vim.api.nvim_exec_autocmds("User", { pattern = "NoctisAIChanges", modeline = false, data = { root = self.root } })
 end
 
---- İçerik incelemeden sonra değiştiyse işaret geçersizdir.
+--- The mark is invalid if the content changed after the review.
 function T:is_reviewed(rel)
   local ch = self.changes[rel]
   return ch ~= nil and self.interval.reviewed[rel] == change_key(ch)
@@ -446,13 +446,13 @@ function T:list()
   return out
 end
 
--- ── Modül düzeyi API ─────────────────────────────────────────────────────
+-- ── Module-level API ─────────────────────────────────────────────────────
 
 function M.get(root)
   return M.by_root[root]
 end
 
---- Etkin aralığı yükle veya yeni başlangıç kaydı al.
+--- Load the active interval or take a new baseline.
 ---@param root string
 ---@param cb fun(t:noctis.Tracker)
 ---@param opts? {fresh?:boolean}
@@ -477,7 +477,7 @@ end
 
 function M.capture(root, cb)
   if M.capturing then
-    U.warn("Başlangıç kaydı zaten alınıyor.")
+    U.warn("A baseline is already being recorded.")
     return
   end
   M.capturing = true
@@ -486,7 +486,7 @@ function M.capture(root, cb)
   require("noctis.ai.baseline").capture(root, function(done, total)
     if uv.now() - notified > 400 then
       notified = uv.now()
-      U.info(("Başlangıç kaydı alınıyor… %d / %d dosya"):format(done, total), { id = "noctis_ai_baseline" })
+      U.info(("Recording the baseline… %d / %d files"):format(done, total), { id = "noctis_ai_baseline" })
     end
   end, function(iv)
     M.capturing = false
@@ -498,11 +498,11 @@ function M.capture(root, cb)
     M.by_root[root] = t
     local s = iv.stats
     U.info(
-      ("Başlangıç kaydı hazır: %d dosya içeriği kaydedildi (%s), %d dosya kapsam dışı%s · %d ms"):format(
+      ("Baseline ready: content of %d files recorded (%s), %d files out of scope%s · %d ms"):format(
         s.captured,
         U.human_size(s.bytes),
         s.skipped,
-        s.limit_hit and (" · sınır: " .. s.limit_hit) or "",
+        s.limit_hit and (" · limit: " .. s.limit_hit) or "",
         s.ms
       ),
       { id = "noctis_ai_baseline" }
@@ -515,7 +515,7 @@ function M.capture(root, cb)
   end)
 end
 
---- Etkin aralığı kapat ve yeni başlangıç al (dosyalara dokunmaz).
+--- Close the active interval and take a new baseline (doesn't touch any files).
 function M.new_interval(root, cb)
   local t = M.by_root[root]
   if t then
@@ -527,7 +527,7 @@ function M.new_interval(root, cb)
   M.capture(root, cb)
 end
 
--- Kullanıcının NOCTIS'ten kaydettiği dosyaları not et; odak dönüşünde uzlaştır.
+-- Note files the user saved from NOCTIS; reconcile when focus returns.
 local group = vim.api.nvim_create_augroup("noctis_ai_tracker", { clear = true })
 vim.api.nvim_create_autocmd("BufWritePost", {
   group = group,

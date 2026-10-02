@@ -1,6 +1,6 @@
--- Komut paleti: registry'deki tüm komutlar ad, açıklama, grup veya kısayolla
--- aranır. Kullanılamayan komutlar gerekçesiyle gösterilir, çalışıyormuş gibi
--- sunulmaz.
+-- Command palette: every registry command is searchable by name, description,
+-- group or key. Commands that can't run are shown with the reason, never
+-- presented as if they worked.
 local M = {}
 
 local R = require("noctis.registry")
@@ -19,12 +19,12 @@ local function build_items()
         keys = keys,
         ok = ok,
         reason = reason,
-        -- Aranabilir: ad, kısayol, açıklama (grup adı aramayı kirletir; yalnız gösterilir)
+        -- Searchable: name, key, description (the group name would pollute search; it's only displayed)
         text = table.concat({ c.title, keys, c.desc or "" }, "  "),
       }
     end
   end
-  -- Kullanılabilenler önce; sonra kayıt sırası (table.sort kararlı değil: indeksle)
+  -- Available commands first, then registration order (table.sort isn't stable: use an index)
   for i, it in ipairs(items) do
     it.order = i
   end
@@ -51,7 +51,7 @@ local function format(item)
     end
   else
     ret[#ret + 1] = { item.title, "NoctisPaletteUnavailable" }
-    ret[#ret + 1] = { "  kullanılamaz: " .. (item.reason or "gereksinim eksik"), "NoctisWarning" }
+    ret[#ret + 1] = { "  unavailable: " .. (item.reason or "missing requirement"), "NoctisWarning" }
   end
   return ret
 end
@@ -64,12 +64,12 @@ function M.open()
     local cols = vim.o.columns
     Snacks.picker.pick({
       source = "noctis_commands",
-      title = "Komut paleti",
+      title = "Command palette",
       items = items,
       format = format,
       preview = "none",
       matcher = { fuzzy = true, sort_empty = false, filename_bonus = false, frecency = false, cwd_bonus = false },
-      -- Eşit puanda kayıt sırası (anlamlı gruplama) korunur
+      -- On equal score, registration order (meaningful grouping) is kept
       sort = { fields = { "score:desc", "idx" } },
       layout = {
         preview = false,
@@ -98,12 +98,12 @@ function M.open()
     })
     return
   end
-  -- Eklentisiz yedek: yerleşik seçim listesi
+  -- Fallback without plugins: the built-in selection list
   vim.ui.select(items, {
-    prompt = "Komut paleti",
+    prompt = "Command palette",
     format_item = function(it)
       local k = it.keys ~= "" and ("[" .. it.keys .. "] ") or ""
-      return k .. it.title .. (it.ok and "" or ("  (kullanılamaz: " .. (it.reason or "?") .. ")"))
+      return k .. it.title .. (it.ok and "" or ("  (unavailable: " .. (it.reason or "?") .. ")"))
     end,
   }, function(it)
     if it then

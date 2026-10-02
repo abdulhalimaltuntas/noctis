@@ -1,4 +1,4 @@
--- Ürün kimliği: app/BRAND dosyasından okunur (tek kaynak).
+-- Product identity, read from app/BRAND (single source of truth).
 local M = {
   name = "NOCTIS",
   command = "noctis",

@@ -1,4 +1,4 @@
--- Temel paletten semantik tasarım tokenlarını türetir.
+-- Derives semantic design tokens from the base palette.
 local M = {}
 
 local function hex2rgb(h)
@@ -12,14 +12,14 @@ local function rgb2hex(r, g, b)
   return ("#%02X%02X%02X"):format(c(r), c(g), c(b))
 end
 
---- fg rengini bg üzerine alpha oranında karıştır.
+--- Blend the fg color over bg with the given alpha.
 function M.blend(fg, bg, alpha)
   local r1, g1, b1 = hex2rgb(fg)
   local r2, g2, b2 = hex2rgb(bg)
   return rgb2hex(r1 * alpha + r2 * (1 - alpha), g1 * alpha + g2 * (1 - alpha), b1 * alpha + b2 * (1 - alpha))
 end
 
---- WCAG göreli parlaklık
+--- WCAG relative luminance
 function M.luminance(hex)
   local function ch(v)
     v = v / 255
@@ -37,11 +37,11 @@ function M.contrast(a, b)
   return (la + 0.05) / (lb + 0.05)
 end
 
----@param p table palettes.lua içindeki temel palet
+---@param p table base palette from palettes.lua
 function M.derive(p)
   local b = M.blend
   local t = vim.deepcopy(p)
-  t.fg_dim = b(p.muted, p.bg, 0.62) -- satır numaraları, ince ipuçları
+  t.fg_dim = b(p.muted, p.bg, 0.62) -- line numbers, subtle hints
   t.fg_subtle = b(p.fg, p.bg, 0.85)
   t.cursorline = b(p.fg, p.bg, 0.045)
   t.panel_cursor = b(p.accent, p.panel, 0.16)
@@ -64,10 +64,10 @@ function M.derive(p)
   t.accent_soft = b(p.accent, p.bg, 0.55)
   t.info = p.accent2
   t.hint = b(p.accent, p.fg, 0.7)
-  t.flash = b(p.accent2, p.bg, 0.18) -- dışarıdan değişen satır vurgusu
-  t.ws = b(p.muted, p.bg, 0.30) -- görünür boşluk karakterleri
-  t.indent = b(p.border, p.bg, 0.75) -- girinti rehberleri
-  -- Yazma animasyonu basamakları (ease-out); typing.lua LEVELS ile aynı sayı
+  t.flash = b(p.accent2, p.bg, 0.18) -- highlight for lines changed externally
+  t.ws = b(p.muted, p.bg, 0.30) -- visible whitespace characters
+  t.indent = b(p.border, p.bg, 0.75) -- indent guides
+  -- Typing animation steps (ease-out); same count as LEVELS in typing.lua
   t.type_glow = {}
   for i, a in ipairs({ 0.50, 0.38, 0.28, 0.19, 0.12, 0.06 }) do
     t.type_glow[i] = b(p.accent, t.cursorline, a)

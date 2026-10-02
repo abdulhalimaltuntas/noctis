@@ -1,6 +1,6 @@
--- snacks.nvim: picker (dosya/metin/buffer/LSP arama), gezgin, input,
--- bildirimler, girinti rehberi, odak modu ve isteğe bağlı lazygit.
--- Dashboard, bigfile ve statusline NOCTIS'in kendi modülleridir.
+-- snacks.nvim: picker (file/text/buffer/LSP search), explorer, input,
+-- notifications, indent guides, focus mode and optional lazygit.
+-- The dashboard, bigfile and statusline are NOCTIS's own modules.
 local function ascii_icons()
   return {
     files = { enabled = false },
@@ -40,18 +40,18 @@ return {
           win = {
             input = {
               keys = {
-                -- Picker içinde Esc doğrudan kapatır
+                -- Esc closes the picker directly
                 ["<Esc>"] = { "close", mode = { "n", "i" } },
               },
             },
           },
           sources = {
             explorer = {
-              title = "Dosyalar",
+              title = "Files",
               hidden = false,
               ignored = false,
               layout = { preset = "sidebar", preview = false, layout = { width = cfg.ui.explorer_width } },
-              -- AI inceleme aralığında değişen dosyalara A/M/D işareti
+              -- A/M/D marks for files changed in the AI review interval
               format = function(item, picker)
                 local ret = require("snacks.picker.format").file(item, picker)
                 if not item.dir and package.loaded["noctis.ai.tracker"] then
@@ -110,7 +110,7 @@ return {
           notification_history = { border = border },
           lazygit = { border = border },
         },
-        -- NOCTIS kendi modüllerini kullanır:
+        -- NOCTIS uses its own modules:
         dashboard = { enabled = false },
         bigfile = { enabled = false },
         statuscolumn = { enabled = false },

@@ -1,9 +1,9 @@
--- Küçük test yardımcıları (bağımlılıksız). Testler NOCTIS yüklüyken
--- `nvim --headless -u app/init.lua -l tests/lua/<dosya>.lua` ile çalışır.
+-- Small test helpers (no dependencies). Tests run with NOCTIS loaded via
+-- `nvim --headless -u app/init.lua -l tests/lua/<file>.lua`.
 local H = { passed = 0, failed = 0, notes = {} }
 
--- `-l` 'verbose'u 1 yapar; dosya yazma mesajları test çıktısını kirletmesin.
--- Bildirimler test çıktısına karışmasın diye susturulur (log'a gider).
+-- `-l` sets 'verbose' to 1; keep file-write messages out of the test output.
+-- Notifications are silenced so they don't mix with the test output (they go to the log).
 vim.o.verbose = 0
 vim.notify = function(msg, level)
   if level and level >= vim.log.levels.ERROR then
@@ -38,20 +38,20 @@ end
 
 function H.eq(a, b, msg)
   if a ~= b then
-    error(("%s: beklenen %s, gelen %s"):format(msg or "eşit değil", vim.inspect(b), vim.inspect(a)), 2)
+    error(("%s: expected %s, got %s"):format(msg or "not equal", vim.inspect(b), vim.inspect(a)), 2)
   end
 end
 
 function H.ok(v, msg)
   if not v then
-    error(msg or "koşul sağlanmadı", 2)
+    error(msg or "condition not met", 2)
   end
   return v
 end
 
 function H.wait(ms, cond, msg)
   if not vim.wait(ms, cond, 10) then
-    error("zaman aşımı (" .. ms .. " ms): " .. (msg or ""), 2)
+    error("timeout (" .. ms .. " ms): " .. (msg or ""), 2)
   end
 end
 
@@ -86,7 +86,7 @@ end
 function H.git(root, ...)
   local res = H.sh(vim.list_extend({ "git", "-C", root }, { ... }))
   if res.code ~= 0 then
-    error("git hatası: " .. table.concat({ ... }, " ") .. "\n" .. (res.stderr or ""), 2)
+    error("git error: " .. table.concat({ ... }, " ") .. "\n" .. (res.stderr or ""), 2)
   end
   return res.stdout
 end
@@ -102,18 +102,18 @@ H.home = vim.env.NOCTIS_HOME
 H.repo = vim.fn.fnamemodify(H.home, ":h")
 H.fake = H.repo .. "/tools/noctis-fake-ai"
 
---- Sahte AI CLI'sini toplu modda çalıştır (gerçek dış süreç)
+--- Run the fake AI CLI in batch mode (a real external process)
 function H.fake_batch(root, ...)
   local cmd = { "python3", H.fake, "--batch", ... }
   local res = vim.system(cmd, { cwd = root, text = true }):wait(30000)
   if res.code ~= 0 then
-    error("fake-ai hatası: " .. (res.stdout or "") .. (res.stderr or ""), 2)
+    error("fake-ai error: " .. (res.stdout or "") .. (res.stderr or ""), 2)
   end
   return vim.uv.hrtime()
 end
 
 function H.done()
-  out(("\n%d başarılı, %d başarısız"):format(H.passed, H.failed))
+  out(("\n%d passed, %d failed"):format(H.passed, H.failed))
   io.stdout:flush()
   os.exit(H.failed > 0 and 1 or 0)
 end

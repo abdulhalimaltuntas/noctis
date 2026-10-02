@@ -1,5 +1,5 @@
-// HTML'e çevrilmiş gerçek terminal yakalamasını PNG'ye dönüştürür.
-// Kullanım: node shoot.mjs girdi.html çıktı.png
+// Converts an HTML-rendered real terminal capture to PNG.
+// Usage: node shoot.mjs input.html output.png
 import { createRequire } from "module";
 const require = createRequire(import.meta.url);
 let playwright;

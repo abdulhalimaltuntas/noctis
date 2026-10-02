@@ -1,4 +1,4 @@
--- :checkhealth noctis — doctor ile aynı denetimler.
+-- :checkhealth noctis — the same checks as `noctis --doctor`.
 local M = {}
 
 function M.check()
@@ -18,21 +18,21 @@ function M.check()
       end
     end
   end
-  -- Çalışan oturuma özgü bilgiler
-  h.start("Bu oturum")
+  -- Information specific to the running session
+  h.start("This session")
   local reg = require("noctis.registry")
   local problems = reg.conflicts()
   if #problems == 0 then
-    h.ok(("%d komut, kısayol çakışması yok"):format(#reg.list))
+    h.ok(("%d commands, no keymap conflicts"):format(#reg.list))
   else
     for _, p in ipairs(problems) do
       h.warn(p)
     end
   end
-  h.info("Pano durumu: " .. require("noctis.clipboard").state)
-  h.info(("termguicolors: %s"):format(tostring(vim.o.termguicolors)))
+  h.info("Clipboard: " .. require("noctis.clipboard").state)
+  h.info(("termguicolors: %s · typing animation: %s"):format(tostring(vim.o.termguicolors), require("noctis.ui.typing").active() and "on" or "off"))
   if require("noctis.util").is_safe_mode() then
-    h.warn("Güvenli mod: üçüncü taraf eklentiler kapalı")
+    h.warn("Safe mode: third-party plugins are disabled")
   end
 end
 

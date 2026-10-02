@@ -1,5 +1,5 @@
--- Editör seçenekleri. Neovim'in olgun varsayılanları korunur; yalnız ürün
--- deneyimi için gereken ayarlar değiştirilir.
+-- Editor options. Neovim's mature defaults are kept; only what the product
+-- experience needs is changed.
 local M = {}
 
 function M.setup()
@@ -10,13 +10,13 @@ function M.setup()
   g.mapleader = " "
   g.maplocalleader = "\\"
 
-  -- Kullanılmayan dil sağlayıcılarını kapat (başlangıç süresi ve checkhealth gürültüsü)
+  -- Disable unused language providers (startup time and checkhealth noise)
   g.loaded_perl_provider = 0
   g.loaded_ruby_provider = 0
   g.loaded_node_provider = 0
   g.loaded_python3_provider = 0
 
-  -- Dosya gezgini eklentiden gelir; güvenli modda netrw yerleşik gezgin olarak kalır.
+  -- The file explorer comes from a plugin; in safe mode netrw stays as the built-in explorer.
   if not require("noctis.util").is_safe_mode() then
     g.loaded_netrw = 1
     g.loaded_netrwPlugin = 1
@@ -26,7 +26,7 @@ function M.setup()
     o.termguicolors = true
   elseif cfg.truecolor == false then
     o.termguicolors = false
-  end -- "auto": Neovim'in terminal algılaması (COLORTERM / XTGETTCAP) geçerli
+  end -- "auto": Neovim's terminal detection (COLORTERM / XTGETTCAP) applies
 
   o.number = true
   o.relativenumber = cfg.ui.relative_numbers
@@ -61,13 +61,13 @@ function M.setup()
   o.virtualedit = "block"
   o.jumpoptions = "view"
 
-  -- Veri güvenliği: kalıcı undo, swap (çökme kurtarma), dış değişiklik algılama.
+  -- Data safety: persistent undo, swap (crash recovery), external change detection.
   o.undofile = true
   o.undolevels = 10000
   o.swapfile = true
   o.autoread = true
-  o.confirm = true -- kaydedilmemiş buffer'da kapatma/çıkışta sor, hata verme
-  o.fixendofline = false -- dosyanın mevcut son satır biçimine dokunma
+  o.confirm = true -- ask on close/quit with unsaved buffers instead of failing
+  o.fixendofline = false -- don't touch the file's existing final-newline style
   o.updatetime = 250
   o.timeoutlen = 400
   o.ttimeoutlen = 10
@@ -94,7 +94,7 @@ function M.setup()
   o.foldlevel = 99
   o.foldlevelstart = 99
 
-  -- Diagnostics: yalnız renkle değil, harf/simge etiketiyle de anlatılır.
+  -- Diagnostics are conveyed with a letter/symbol label, not just color.
   local sev = vim.diagnostic.severity
   local s = icons.get().diag
   vim.diagnostic.config({

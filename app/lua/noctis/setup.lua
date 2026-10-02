@@ -1,6 +1,6 @@
--- `noctis --setup`: eklentileri kilit dosyasındaki commit'lerle indirir.
--- Ne indirileceğini önce açıklar; sonucu çıkış koduyla bildirir.
--- Dil sunucuları/parser'lar indirilmez (kullanıcı :NoctisLang ile seçer).
+-- `noctis --setup`: downloads plugins at the commits from the lockfile.
+-- Explains what will be downloaded first; reports the result via the exit code.
+-- Language servers/parsers are not downloaded (the user picks them with :NoctisLang).
 local M = {}
 
 local function out(s)
@@ -10,26 +10,26 @@ end
 function M.run()
   local lazy_ok = package.loaded["lazy"] ~= nil
   if not lazy_ok then
-    out("lazy.nvim yüklenemedi (ağ bağlantısını ve git kurulumunu kontrol edin).")
+    out("Could not load lazy.nvim (check your network connection and git installation).")
     vim.cmd("cquit 1")
     return
   end
   local Config = require("lazy.core.config")
   local lock = require("noctis.util").json_read(require("noctis.lazy").lockfile) or {}
   out("")
-  out("NOCTIS eklenti kurulumu")
-  out("Hedef: " .. Config.options.root)
-  out("Eklentiler (kilit dosyasındaki sürümler):")
+  out("NOCTIS plugin setup")
+  out("Target: " .. Config.options.root)
+  out("Plugins (versions from the lockfile):")
   local names = vim.tbl_keys(Config.plugins)
   table.sort(names)
   for _, name in ipairs(names) do
     local l = lock[name]
-    out(("  • %-22s %s"):format(name, l and (l.commit:sub(1, 7) .. " (" .. (l.branch or "?") .. ")") or "kilitsiz (en güncel uyumlu sürüm)"))
+    out(("  • %-22s %s"):format(name, l and (l.commit:sub(1, 7) .. " (" .. (l.branch or "?") .. ")") or "unpinned (latest compatible version)"))
   end
-  out("Dil sunucuları, formatter'lar ve Tree-sitter parser'ları indirilmez; NOCTIS içinde :NoctisLang ile seçerek kurulur.")
+  out("Language servers, formatters and Tree-sitter parsers are not downloaded; pick and install them inside NOCTIS with :NoctisLang.")
   out("")
 
-  -- Kurulu olanları da kilit dosyasındaki commit'e getir
+  -- Bring already-installed plugins to the lockfile commits too
   if next(lock) then
     require("lazy").restore({ wait = true, show = false })
   else
@@ -44,13 +44,13 @@ function M.run()
     end
   end
   if #missing > 0 then
-    out("Kurulamayan eklentiler: " .. table.concat(missing, ", "))
-    out("Ağ bağlantısını kontrol edip `noctis --setup` komutunu tekrar çalıştırın. Editör bu eklentiler olmadan da açılır.")
+    out("Plugins that failed to install: " .. table.concat(missing, ", "))
+    out("Check your network connection and run `noctis --setup` again. The editor also opens without these plugins.")
     vim.cmd("cquit 1")
     return
   end
-  out(("Tamam: %d eklenti hazır. Normal açılış artık ağ gerektirmez."):format(#names))
-  out("Sonraki adım: noctis --doctor  ·  noctis")
+  out(("Done: %d plugins ready. A normal launch no longer needs the network."):format(#names))
+  out("Next step: noctis --doctor  ·  noctis")
   vim.cmd("qall!")
 end
 

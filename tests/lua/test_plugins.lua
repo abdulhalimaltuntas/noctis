@@ -1,10 +1,10 @@
--- Eklentiler yüklüyken arayüz akışları (headless duman testleri).
+-- Interface flows with plugins installed (headless smoke tests).
 package.path = vim.env.NOCTIS_HOME .. "/../tests/lua/?.lua;" .. package.path
 local H = require("helpers")
 local api = vim.api
 local R = require("noctis.registry")
 
-H.suite("Eklentili arayüz")
+H.suite("Interface with plugins")
 
 local function floats()
   local n = 0
@@ -24,12 +24,12 @@ local function close_floats()
   end
 end
 
--- Her test kayan pencere bırakmadan ve editör penceresinde başlasın
+-- Every test starts without floating windows, in the editor window
 local test = H.test
 H.test = function(name, fn)
   test(name, function()
-    -- Önce picker'ları kendi API'leriyle kapat (pencereyi zorla kapatmak
-    -- snacks kaydında artık nesne bırakır), sonra kalan kayan pencereler
+    -- Close pickers through their own API first (force-closing the window
+    -- leaves objects in the snacks registry), then any remaining floats
     for _, pk in ipairs(require("snacks").picker.get()) do
       pcall(pk.close, pk)
     end
@@ -40,55 +40,55 @@ H.test = function(name, fn)
   end)
 end
 
-local root = H.tmpdir("eklenti test")
+local root = H.tmpdir("plugin test")
 H.write(root .. "/src/app.py", "print('x')\n")
 H.write(root .. "/README.md", "# test\n")
 vim.cmd("cd " .. vim.fn.fnameescape(root))
 require("noctis.project").refresh()
 
-H.test("kilit dosyasındaki tüm eklentiler kurulu ve lazy.nvim yüklendi", function()
+H.test("every plugin in the lockfile is installed and lazy.nvim is loaded", function()
   local cfg = require("lazy.core.config")
   for name, p in pairs(cfg.plugins) do
-    H.ok(p._.installed, name .. " kurulu değil")
+    H.ok(p._.installed, name .. " not installed")
   end
 end)
 
-H.test("komut paleti snacks picker ile açılır ve kapanır; kullanılamaz komutlar gerekçeli", function()
+H.test("the command palette opens and closes with snacks picker; unavailable commands have reasons", function()
   R.run("palette")
   H.wait(3000, function()
     return require("snacks").picker.get({ source = "noctis_commands" })[1] ~= nil
-  end, "palet açıldı")
+  end, "palette opened")
   local p = require("snacks").picker.get({ source = "noctis_commands" })[1]
   H.wait(3000, function()
     return #p:items() > 50
-  end, "komutlar listelendi")
+  end, "commands listed")
   p:close()
   vim.wait(100)
 end)
 
-H.test("henüz yüklenmemiş özelliğe palet/komutla erişim (lazy yükleme) çalışır", function()
-  H.eq(package.loaded["conform"], nil, "conform başta yüklü değil")
+H.test("reaching a not-yet-loaded feature from the palette/command (lazy loading) works", function()
+  H.eq(package.loaded["conform"], nil, "conform not loaded at first")
   vim.cmd("edit src/app.py")
-  R.run("code.format") -- conform require ile yüklenir
+  R.run("code.format") -- conform is loaded via require
   H.wait(3000, function()
     return package.loaded["conform"] ~= nil
-  end, "conform yüklendi")
+  end, "conform loaded")
 end)
 
-H.test("dosya gezgini açılır/kapanır ve proje kökünü gösterir", function()
+H.test("the file explorer opens/closes and shows the project root", function()
   R.run("explorer")
   H.wait(3000, function()
     return require("noctis.explorer").get() ~= nil
-  end, "gezgin açıldı")
+  end, "explorer opened")
   local p = require("noctis.explorer").get()
   H.eq(vim.fs.normalize(p:cwd()), root)
   R.run("explorer")
   H.wait(2000, function()
     return require("noctis.explorer").get() == nil
-  end, "gezgin kapandı")
+  end, "explorer closed")
 end)
 
-H.test("dosya bulma ve metin arama picker'ları açılır", function()
+H.test("the find-file and text-search pickers open", function()
   R.run("files.find")
   H.wait(3000, function()
     return require("snacks").picker.get({ source = "files" })[1] ~= nil
@@ -103,40 +103,40 @@ H.test("dosya bulma ve metin arama picker'ları açılır", function()
   close_floats()
 end)
 
-H.test("tema değişince tüm bileşen grupları birlikte güncellenir", function()
+H.test("when the theme changes, every component group updates together", function()
   local before = api.nvim_get_hl(0, { name = "NoctisStNormal" }).bg
   local picker_before = api.nvim_get_hl(0, { name = "SnacksPickerMatch" }).fg
   require("noctis.theme").apply("amber")
   local after = api.nvim_get_hl(0, { name = "NoctisStNormal" }).bg
-  H.ok(before ~= after, "statusline rengi değişti")
-  H.ok(picker_before ~= api.nvim_get_hl(0, { name = "SnacksPickerMatch" }).fg, "picker rengi değişti")
-  H.ok(api.nvim_get_hl(0, { name = "BlinkCmpMenuSelection", link = false }).bg ~= nil, "completion menüsü tanımlı")
-  H.eq(vim.g.terminal_color_5, require("noctis.theme").tokens.accent, "terminal paleti")
+  H.ok(before ~= after, "statusline color changed")
+  H.ok(picker_before ~= api.nvim_get_hl(0, { name = "SnacksPickerMatch" }).fg, "picker color changed")
+  H.ok(api.nvim_get_hl(0, { name = "BlinkCmpMenuSelection", link = false }).bg ~= nil, "completion menu defined")
+  H.eq(vim.g.terminal_color_5, require("noctis.theme").tokens.accent, "terminal palette")
   require("noctis.theme").apply("glacier")
   require("noctis.theme").apply("midnight-violet")
 end)
 
-H.test("256 renk yedeği: her grup için cterm rengi tanımlı", function()
+H.test("256-color fallback: every group has a cterm color", function()
   local hl = api.nvim_get_hl(0, { name = "Normal" })
-  H.ok(hl.ctermfg and hl.ctermbg, "Normal cterm renkleri")
+  H.ok(hl.ctermfg and hl.ctermbg, "Normal cterm colors")
   H.eq(require("noctis.theme").to_cterm("#000000"), 16)
   H.eq(require("noctis.theme").to_cterm("#FFFFFF"), 231)
 end)
 
-H.test("yardım ve kısayol listesi ekrana sığan pencerede açılır, Esc ile kapanır", function()
+H.test("help and the keymap list open in a window that fits the screen and close with Esc", function()
   R.run("help")
   H.wait(1000, function()
     return floats() > 0
   end)
   local win = api.nvim_get_current_win()
   local cfg = api.nvim_win_get_config(win)
-  H.ok(cfg.width <= vim.o.columns and cfg.height <= vim.o.lines, "ekrana sığar")
+  H.ok(cfg.width <= vim.o.columns and cfg.height <= vim.o.lines, "fits the screen")
   api.nvim_feedkeys(api.nvim_replace_termcodes("<Esc>", true, false, true), "x", false)
   vim.wait(200)
-  H.ok(not api.nvim_win_is_valid(win), "Esc ile kapandı")
+  H.ok(not api.nvim_win_is_valid(win), "closed with Esc")
 end)
 
-H.test("dil paketi raporu ve :NoctisLang komutu çalışır", function()
+H.test("the language pack report and :NoctisLang work", function()
   local lines = require("noctis.lang").report_lines()
   H.ok(#lines > 10)
   vim.cmd("NoctisLang")
@@ -144,19 +144,19 @@ H.test("dil paketi raporu ve :NoctisLang komutu çalışır", function()
   close_floats()
 end)
 
-H.test("AI Workbench paneli açılır/gizlenir; odak kendiliğinden alınmaz", function()
+H.test("the AI Workbench panel opens/hides; it never takes focus on its own", function()
   local cur = api.nvim_get_current_win()
   require("noctis.ai").toggle()
   local wb = require("noctis.ai.workbench")
-  H.ok(wb.is_visible(), "panel görünür")
-  H.eq(api.nvim_get_current_win(), cur, "odak editörde kaldı")
-  require("noctis.ai").toggle() -- ikinci basış: odaklan
-  H.eq(api.nvim_get_current_win(), wb.win, "ikinci basışta odaklandı")
-  require("noctis.ai").toggle() -- üçüncü: gizle
-  H.ok(not wb.is_visible(), "gizlendi")
+  H.ok(wb.is_visible(), "panel visible")
+  H.eq(api.nvim_get_current_win(), cur, "focus stayed in the editor")
+  require("noctis.ai").toggle() -- second press: focus
+  H.eq(api.nvim_get_current_win(), wb.win, "focused on the second press")
+  require("noctis.ai").toggle() -- third: hide
+  H.ok(not wb.is_visible(), "hidden")
 end)
 
-H.test("dosya picker'ı seçilen dosyayı açar", function()
+H.test("the file picker opens the selected file", function()
   vim.cmd("silent! %bwipeout!")
   R.run("files.find")
   local p
@@ -165,18 +165,18 @@ H.test("dosya picker'ı seçilen dosyayı açar", function()
     p = all[#all]
     return p ~= nil
   end)
-  -- Bulucu (dosya listesi) bitmeden girilen filtre eşleştiriciyi tetiklemeyebilir
+  -- A filter entered before the finder (file list) completes may not trigger the matcher
   H.wait(5000, function()
     return not p:is_active() and #p:items() > 0
-  end, "dosya listesi")
-  -- Kullanıcı yazınca snacks'ın TextChanged işleyicisinin yaptığını yap:
-  -- filtreyi ayarla ve eşleştiriciyi yeniden çalıştır
+  end, "file list")
+  -- Do what snacks' TextChanged handler does when the user types:
+  -- set the filter and rerun the matcher
   p.input:set("app.py")
   p:find({ refresh = false })
   H.wait(5000, function()
     local cur = p:current()
     return cur ~= nil and (cur.file or ""):match("app%.py$") ~= nil
-  end, "eşleşme · cwd=" .. tostring(p:cwd()) .. " filtre=" .. tostring(p.input.filter.pattern) .. " öğeler=" .. vim.inspect(vim.tbl_map(function(i)
+  end, "match · cwd=" .. tostring(p:cwd()) .. " filter=" .. tostring(p.input.filter.pattern) .. " items=" .. vim.inspect(vim.tbl_map(function(i)
     return i.file
   end, vim.list_slice(p:items(), 1, 5))))
   p:action("confirm")
@@ -189,12 +189,12 @@ H.test("dosya picker'ı seçilen dosyayı açar", function()
   end
   H.wait(3000, function()
     return vim.api.nvim_buf_get_name(0):match("src/app%.py$") ~= nil
-  end, "dosya açıldı · " .. state())
+  end, "file opened · " .. state())
   close_floats()
 end)
 
-H.test("projede arama sonucu doğru dosya ve satıra götürür", function()
-  H.write(root .. "/src/derin.py", "a = 1\nb = 2\nHEDEF_SATIR = 3\n")
+H.test("a project search result jumps to the right file and line", function()
+  H.write(root .. "/src/deep.py", "a = 1\nb = 2\nTARGET_LINE = 3\n")
   R.run("files.grep")
   local p
   H.wait(3000, function()
@@ -202,27 +202,27 @@ H.test("projede arama sonucu doğru dosya ve satıra götürür", function()
     p = all[#all]
     return p ~= nil
   end)
-  p.input:set(nil, "HEDEF_SATIR") -- canlı arama: metin search alanına
+  p.input:set(nil, "TARGET_LINE") -- live search: the text goes into the search field
   p:find()
   H.wait(8000, function()
     local cur = p:current()
-    return cur ~= nil and (cur.file or ""):match("derin%.py$") ~= nil
-  end, "arama sonucu")
+    return cur ~= nil and (cur.file or ""):match("deep%.py$") ~= nil
+  end, "search result")
   p:action("confirm")
   H.wait(3000, function()
-    return vim.api.nvim_buf_get_name(0):match("derin%.py$") ~= nil
-  end, "dosya açıldı")
-  H.eq(api.nvim_win_get_cursor(0)[1], 3, "satır")
+    return vim.api.nvim_buf_get_name(0):match("deep%.py$") ~= nil
+  end, "file opened")
+  H.eq(api.nvim_win_get_cursor(0)[1], 3, "line")
   close_floats()
 end)
 
-H.test("Git işaretleri gerçek git diff ile tutarlı; Git olmayan klasör sorunsuz", function()
-  local g = H.tmpdir("git isaret")
+H.test("Git signs match the real git diff; a folder without Git is fine", function()
+  local g = H.tmpdir("git signs")
   H.init_repo(g)
   H.write(g .. "/f.txt", "1\n2\n3\n4\n")
   H.git(g, "add", ".")
   H.git(g, "commit", "-q", "-m", "x")
-  H.write(g .. "/f.txt", "1\nIKI\n3\n4\nbeş\n")
+  H.write(g .. "/f.txt", "1\nTWO\n3\n4\nfive\n")
   vim.cmd("cd " .. vim.fn.fnameescape(g))
   vim.cmd("edit f.txt")
   local buf = api.nvim_get_current_buf()
@@ -232,21 +232,21 @@ H.test("Git işaretleri gerçek git diff ile tutarlı; Git olmayan klasör sorun
   local d = vim.b[buf].gitsigns_status_dict
   local numstat = H.git(g, "diff", "--numstat")
   local a, del = numstat:match("^(%d+)%s+(%d+)")
-  -- gitsigns: değişen satır "changed" sayılır; git numstat ekleme+silme verir
-  H.eq(d.added + d.changed, tonumber(a), "eklenen/değişen satır")
-  H.eq(d.changed + d.removed, tonumber(del), "silinen/değişen satır")
-  local plain = H.tmpdir("gitsiz")
+  -- gitsigns counts a modified line as "changed"; git numstat gives additions+deletions
+  H.eq(d.added + d.changed, tonumber(a), "added/changed lines")
+  H.eq(d.changed + d.removed, tonumber(del), "removed/changed lines")
+  local plain = H.tmpdir("no git")
   H.write(plain .. "/x.txt", "x\n")
   vim.cmd("cd " .. vim.fn.fnameescape(plain))
   vim.cmd("edit x.txt")
   vim.wait(300)
-  H.eq(vim.b.gitsigns_status_dict, nil, "Git olmayan klasörde işaret yok")
+  H.eq(vim.b.gitsigns_status_dict, nil, "no signs in a folder without Git")
   H.ok(#require("noctis.ui.statusline").render() > 0)
   vim.cmd("cd " .. vim.fn.fnameescape(root))
 end)
 
-H.test("statusline ve tabline hata vermeden çizilir (dar ve geniş)", function()
-  local long = root .. "/" .. string.rep("cok_uzun_dosya_adi_", 6) .. ".py"
+H.test("statusline and tabline render without errors (narrow and wide)", function()
+  local long = root .. "/" .. string.rep("a_very_long_file_name_", 6) .. ".py"
   H.write(long, "x = 1\n")
   vim.cmd("edit " .. vim.fn.fnameescape(long))
   for _, cols in ipairs({ 60, 80, 120, 200 }) do
@@ -254,7 +254,7 @@ H.test("statusline ve tabline hata vermeden çizilir (dar ve geniş)", function(
     local s = require("noctis.ui.statusline").render()
     local t = require("noctis.ui.tabline").render()
     H.ok(type(s) == "string" and type(t) == "string")
-    -- Görünür genişlik ekranı aşmamalı (%-öğeleri hariç)
+    -- The visible width must not exceed the screen (%-items excluded)
     local visible = vim.api.nvim_eval_statusline(s, { maxwidth = cols }).width
     H.ok(visible <= cols, ("statusline %d > %d"):format(visible, cols))
     local tvis = vim.api.nvim_eval_statusline(t, { maxwidth = cols, use_tabline = true }).width

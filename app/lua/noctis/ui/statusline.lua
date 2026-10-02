@@ -1,5 +1,5 @@
--- Global statusline: mod, kısaltılmış yol, Git, diagnostics, AI, konum.
--- Dar alanda ikincil bilgiler sırayla gizlenir.
+-- Global statusline: mode, shortened path, Git, diagnostics, AI, position.
+-- On narrow screens secondary information is hidden step by step.
 local M = {}
 
 local api = vim.api
@@ -28,13 +28,13 @@ local modes = {
   t = { "TERMINAL", "NoctisStTerminal" },
 }
 
--- Yeni başlayanlar için mod ipucu (geniş ekranda)
+-- Mode hints for newcomers (wide screens)
 local hints = {
-  NORMAL = "i: yaz · Space Space: komutlar",
-  INSERT = "Esc: Normal moda dön",
-  VISUAL = "y: kopyala · d: sil · Esc: bitir",
-  ["V-LINE"] = "y: kopyala · d: sil · Esc: bitir",
-  TERMINAL = "Ctrl-\\ e: editöre dön · Ctrl-\\ Ctrl-n: Normal",
+  NORMAL = "i: type · Space Space: commands",
+  INSERT = "Esc: back to Normal mode",
+  VISUAL = "y: copy · d: delete · Esc: done",
+  ["V-LINE"] = "y: copy · d: delete · Esc: done",
+  TERMINAL = "Ctrl-\\ e: back to editor · Ctrl-\\ Ctrl-n: Normal",
 }
 
 local function hl(group, text)
@@ -46,24 +46,24 @@ local function esc(s)
 end
 
 local function width_of(parts)
-  -- %#Grup# ve %< gibi öğeler hariç görünür genişlik
+  -- Visible width, excluding items such as %#Group# and %<
   local s = table.concat(parts):gsub("%%#[^#]*#", ""):gsub("%%%%", "%%"):gsub("%%<", "")
   return vim.fn.strdisplaywidth(s)
 end
 
--- Özel buffer'lar için okunur adlar
+-- Readable names for special buffers
 local special_labels = {
-  ["noctis-dashboard"] = "Başlangıç",
-  ["noctis-changes"] = "AI · Değişiklikler",
+  ["noctis-dashboard"] = "Dashboard",
+  ["noctis-changes"] = "AI · Changes",
   ["noctis-diff"] = "AI · Diff",
-  ["noctis-replace"] = "Bul ve değiştir",
-  ["noctis-info"] = "Bilgi",
-  snacks_picker_list = "Gezgin",
-  snacks_picker_input = "Arama",
-  snacks_dashboard = "Başlangıç",
-  help = "Yardım",
-  checkhealth = "Sağlık kontrolü",
-  lazy = "Eklentiler",
+  ["noctis-replace"] = "Find and replace",
+  ["noctis-info"] = "Info",
+  snacks_picker_list = "Explorer",
+  snacks_picker_input = "Search",
+  snacks_dashboard = "Dashboard",
+  help = "Help",
+  checkhealth = "Health check",
+  lazy = "Plugins",
   mason = "Mason",
   qf = "Quickfix",
 }
@@ -105,11 +105,11 @@ local function badges(buf)
   local out = {}
   local c = vim.b[buf].noctis_conflict
   if c then
-    local label = ({ deleted = "SİLİNDİ", changed = "ÇATIŞMA", markers = "BİRLEŞTİR" })[c.reason] or "ÇATIŞMA"
+    local label = ({ deleted = "DELETED", changed = "CONFLICT", markers = "MERGE" })[c.reason] or "CONFLICT"
     out[#out + 1] = hl("NoctisStConflict", " " .. label .. " ") .. hl("NoctisStText", " ")
   end
   if vim.b[buf].noctis_bigfile then
-    out[#out + 1] = hl("NoctisStBadge", " BÜYÜK DOSYA ") .. hl("NoctisStText", " ")
+    out[#out + 1] = hl("NoctisStBadge", " BIG FILE ") .. hl("NoctisStText", " ")
   end
   return table.concat(out)
 end
@@ -221,7 +221,7 @@ function M.render()
   local avail = cols - width_of(left) - width_of({ right_s }) - 2
   left[#left + 1] = file_part(buf, avail - 2)
 
-  -- Mod ipucu yalnız geniş ekranda ve rehber/ilk kullanım sürecinde
+  -- Mode hint only on wide screens, during the tour / first use
   if cols >= 140 and vim.g.noctis_show_hints then
     local hint = hints[m[1]]
     if hint and width_of(left) + width_of({ right_s }) + #hint + 6 < cols then

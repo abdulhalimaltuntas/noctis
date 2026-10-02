@@ -1,5 +1,5 @@
--- Güvenli çıkış: kaydedilmemiş buffer'ları ve çalışan terminal/AI/görev
--- süreçlerini gösterir; hiçbir şeyi körlemesine sonlandırmaz.
+-- Safe quit: shows unsaved buffers and running terminal/AI/task processes;
+-- never kills anything blindly.
 local M = {}
 
 local api = vim.api
@@ -9,13 +9,13 @@ local function modified_bufs()
   for _, b in ipairs(api.nvim_list_bufs()) do
     if api.nvim_buf_is_loaded(b) and vim.bo[b].modified and vim.bo[b].buftype ~= "terminal" then
       local name = api.nvim_buf_get_name(b)
-      out[#out + 1] = { buf = b, label = name == "" and "[adsız]" or vim.fn.fnamemodify(name, ":~:.") }
+      out[#out + 1] = { buf = b, label = name == "" and "[No Name]" or vim.fn.fnamemodify(name, ":~:.") }
     end
   end
   return out
 end
 
---- Çalışan süreçler: shell terminalleri, AI oturumları, görevler.
+--- Running processes: shell terminals, AI sessions, tasks.
 function M.running()
   local out = {}
   local ok_ai, ai = pcall(require, "noctis.ai.sessions")
@@ -33,7 +33,7 @@ function M.running()
   local ok_k, tasks = pcall(require, "noctis.tasks")
   if ok_k then
     for _, t in ipairs(tasks.running()) do
-      out[#out + 1] = "Görev: " .. t
+      out[#out + 1] = "Task: " .. t
     end
   end
   return out
@@ -48,39 +48,39 @@ function M.quit()
   end
   local lines = {}
   if #mods > 0 then
-    lines[#lines + 1] = "Kaydedilmemiş dosyalar:"
+    lines[#lines + 1] = "Unsaved files:"
     for _, m in ipairs(mods) do
       lines[#lines + 1] = "  • " .. m.label
     end
   end
   if #procs > 0 then
-    lines[#lines + 1] = "Çalışan süreçler (çıkışta sonlandırılır, arka planda kalmaz):"
+    lines[#lines + 1] = "Running processes (stopped on quit, nothing keeps running in the background):"
     for _, p in ipairs(procs) do
       lines[#lines + 1] = "  • " .. p
     end
   end
   local buttons, actions = {}, {}
   if #mods > 0 then
-    buttons[#buttons + 1] = "&Kaydet ve çık"
+    buttons[#buttons + 1] = "&Save and quit"
     actions[#actions + 1] = function()
       require("noctis.files").save_all()
       if #modified_bufs() > 0 then
-        require("noctis.util").warn("Bazı dosyalar kaydedilemedi; çıkış iptal edildi.")
+        require("noctis.util").warn("Some files could not be saved; quit cancelled.")
         return
       end
       vim.cmd("qa!")
     end
-    buttons[#buttons + 1] = "Kaydetmeden çı&k (değişiklikler kaybolur)"
+    buttons[#buttons + 1] = "&Quit without saving (changes are lost)"
     actions[#actions + 1] = function()
       vim.cmd("qa!")
     end
   else
-    buttons[#buttons + 1] = "&Süreçleri sonlandır ve çık"
+    buttons[#buttons + 1] = "&End processes and quit"
     actions[#actions + 1] = function()
       vim.cmd("qa!")
     end
   end
-  buttons[#buttons + 1] = "&İptal"
+  buttons[#buttons + 1] = "&Cancel"
   local choice = vim.fn.confirm(table.concat(lines, "\n"), table.concat(buttons, "\n"), #buttons)
   if actions[choice] then
     actions[choice]()

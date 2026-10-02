@@ -1,8 +1,8 @@
--- Başlangıç kaydı: kapsamdaki metin dosyalarının o anki DİSK içeriği
--- (yalnız hash değil) ve Git durumu. Git'te hiçbir şey değiştirilmez:
--- branch/index/stash/çalışma ağacına dokunulmaz; durum okumaları
--- `--no-optional-locks` ile yapılır (index yenilemesi yazılmaz).
--- Kayıt arayüzü bloklamadan parça parça alınır.
+-- Baseline: the current DISK content of the in-scope text files (not just
+-- hashes) and the Git state. Nothing is changed in Git: the branch, index,
+-- stash and working tree are never touched; status reads use
+-- `--no-optional-locks` (no index refresh is written).
+-- The baseline is recorded in chunks without blocking the UI.
 local M = {}
 
 local U = require("noctis.util")
@@ -10,7 +10,7 @@ local store = require("noctis.ai.store")
 local scope = require("noctis.ai.scope")
 local uv = vim.uv
 
-M.MAX_TRACKED = 50000 -- metaveri izlenen en fazla dosya
+M.MAX_TRACKED = 50000 -- maximum number of files tracked by metadata
 
 local function git(root, args)
   local cmd = { "git", "--no-optional-locks", "-C", root }
@@ -19,7 +19,7 @@ local function git(root, args)
   return res.code == 0 and res.stdout or nil
 end
 
---- Git anlık durumu (salt okunur)
+--- Git snapshot (read-only)
 function M.git_state(root)
   if not U.has("git") then
     return nil
@@ -53,7 +53,7 @@ local function new_id()
   return os.date("%Y%m%d-%H%M%S") .. "-" .. string.format("%04x", uv.hrtime() % 65536)
 end
 
---- Bir dosyanın metaverisini/içeriğini kayda al.
+--- Record a file's metadata/content in the baseline.
 ---@return table entry
 function M.capture_file(root, rel, budget)
   local cfg = require("noctis.config").options.ai.baseline
@@ -77,10 +77,10 @@ function M.capture_file(root, rel, budget)
     e.reason = "large"
   elseif budget.count >= cfg.max_files then
     e.reason = "limit"
-    budget.limit_hit = budget.limit_hit or ("dosya sayısı sınırı (" .. cfg.max_files .. ")")
+    budget.limit_hit = budget.limit_hit or ("file count limit (" .. cfg.max_files .. ")")
   elseif budget.bytes + st.size > cfg.max_total_size then
     e.reason = "limit"
-    budget.limit_hit = budget.limit_hit or ("toplam boyut sınırı (" .. U.human_size(cfg.max_total_size) .. ")")
+    budget.limit_hit = budget.limit_hit or ("total size limit (" .. U.human_size(cfg.max_total_size) .. ")")
   else
     local data = U.read_file(abs)
     if not data then
@@ -95,7 +95,7 @@ function M.capture_file(root, rel, budget)
   return e
 end
 
---- Başlangıç kaydını asenkron al.
+--- Record the baseline asynchronously.
 ---@param root string
 ---@param on_progress? fun(done:integer, total:integer)
 ---@param on_done fun(interval:table)
@@ -116,7 +116,7 @@ function M.capture(root, on_progress, on_done)
   local budget = { count = 0, bytes = 0 }
   local total = math.min(#files, M.MAX_TRACKED)
   if #files > M.MAX_TRACKED then
-    budget.limit_hit = ("izlenen dosya sınırı (%d / %d)"):format(M.MAX_TRACKED, #files)
+    budget.limit_hit = ("tracked file limit (%d / %d)"):format(M.MAX_TRACKED, #files)
   end
   local i = 0
   local function step()
@@ -128,7 +128,7 @@ function M.capture(root, on_progress, on_done)
       if e then
         interval.files[rel] = e
       end
-      -- Her ~12 ms'de bir arayüze nefes aldır
+      -- Give the UI room to breathe every ~12 ms
       if (uv.hrtime() - t0) > 12e6 then
         if on_progress then
           on_progress(i, total)

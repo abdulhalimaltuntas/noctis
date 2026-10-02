@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# NOCTIS test paketi.
-#   tests/run.sh            ağ gerektirmeyen tüm testler
-#   tests/run.sh --plugins  + eklentili testler (ilk seferde eklentileri
-#                            tests/.tmp altına indirir; ağ gerekir)
-# Her paket temiz, geçici XDG dizinleriyle çalışır; kullanıcının Neovim
-# veya NOCTIS kurulumuna dokunulmaz.
+# NOCTIS test suite.
+#   tests/run.sh            all offline tests
+#   tests/run.sh --plugins  + plugin tests (downloads the plugins into
+#                            tests/.tmp the first time; needs network)
+# Every suite runs with clean, temporary XDG directories; the user's Neovim
+# or NOCTIS installation is never touched.
 set -u
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO"
@@ -31,20 +31,20 @@ bash tests/install_test.sh || fail=1
 run_suite test_core.lua
 run_suite test_ai.lua
 run_suite test_safe.lua "" 1
-run_suite test_safe.lua "" 0 # eklentisiz normal mod (çevrimdışı açılış)
+run_suite test_safe.lua "" 0 # normal mode without plugins (offline startup)
 
 if [ "$PLUGINS" -eq 1 ]; then
   DATA="$REPO/tests/.tmp/xdg-data"
   if [ ! -d "$DATA/noctis/lazy/lazy.nvim" ]; then
-    echo "▸ Eklentiler indiriliyor (tests/.tmp)…"
+    echo "▸ Downloading plugins (tests/.tmp)…"
     mkdir -p "$DATA"
     XDG_DATA_HOME="$DATA" XDG_CONFIG_HOME="$(mktemp -d)" XDG_STATE_HOME="$(mktemp -d)" XDG_CACHE_HOME="$(mktemp -d)" \
-      "$REPO/bin/noctis" --setup >/dev/null || { echo "eklenti kurulumu başarısız"; exit 1; }
+      "$REPO/bin/noctis" --setup >/dev/null || { echo "plugin setup failed"; exit 1; }
   fi
   run_suite test_plugins.lua "$DATA" 0
   run_suite test_lsp.lua "$DATA" 0
 fi
 
 echo
-if [ "$fail" -eq 0 ]; then echo "TÜM TESTLER GEÇTİ"; else echo "BAŞARISIZ TEST VAR"; fi
+if [ "$fail" -eq 0 ]; then echo "ALL TESTS PASSED"; else echo "SOME TESTS FAILED"; fi
 exit "$fail"

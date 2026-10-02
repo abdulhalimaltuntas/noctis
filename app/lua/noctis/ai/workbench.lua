@@ -1,7 +1,7 @@
--- AI Workbench paneli: oturum sekmeleri, proje yolu, terminal ve
--- "Değişiklikler" görünümü. Geniş ekranda sağ panel, orta genişlikte alt
--- panel, dar ekranda tam alan (sekmeli tek görünüm). Panel kendiliğinden
--- odak almaz; gizlemek süreçleri durdurmaz.
+-- AI Workbench panel: session tabs, project path, terminal and the
+-- "Changes" view. A right panel on wide screens, a bottom panel at medium
+-- width, the full area on narrow screens (one tabbed view). The panel never
+-- takes focus on its own; hiding it doesn't stop processes.
 local M = {}
 
 local api = vim.api
@@ -10,7 +10,7 @@ local review = require("noctis.ai.review")
 
 M.win = nil ---@type integer?
 M.mode = nil ---@type "right"|"bottom"|"full"|nil
-M.current = "changes" ---@type string  oturum kimliği veya "changes"
+M.current = "changes" ---@type string  session id or "changes"
 
 function M.pick_mode()
   local cfg = require("noctis.config").options.ai.layout
@@ -75,7 +75,7 @@ function M.winbar()
     local active = M.current == s.id
     local tab = active and "NoctisAITabActive" or "NoctisAITabInactive"
     local click = ("%%%d@v:lua.NoctisAITabClick@"):format(s.n)
-    -- Etkin olmayan oturumların durum metni dar alanda önce atılır
+    -- The status text of inactive sessions is dropped first in narrow space
     parts[#parts + 1] = { text = (" %d %s "):format(s.n, s.label), hl = tab, click = click }
     parts[#parts + 1] = { text = dot .. " " .. sessions.status_text(s) .. " ", hl = active and tab or status_hl[s.status], click = click, drop = active and 0 or 3 }
     parts[#parts + 1] = { text = " ", hl = "NoctisPanel" }
@@ -84,20 +84,20 @@ function M.winbar()
   local t = root and require("noctis.ai.tracker").get(root)
   local n = t and vim.tbl_count(t.changes) or 0
   parts[#parts + 1] = {
-    text = (" Δ Değişiklikler %d "):format(n),
+    text = (" Δ Changes %d "):format(n),
     hl = M.current == "changes" and "NoctisAITabActive" or "NoctisAITabInactive",
     click = "%0@v:lua.NoctisAITabClick@",
   }
   local running = root and #sessions.running(root) or 0
   if running > 1 then
-    -- Güvenlik uyarısı düşürülmez; dar alanda kısa biçim kullanılır
-    local warn = width >= 110 and (" ⚠ " .. running .. " araç aynı ağaçta") or (" ⚠" .. running .. " araç")
+    -- The safety warning is never dropped; a short form is used in narrow space
+    local warn = width >= 110 and (" ⚠ " .. running .. " tools in the same tree") or (" ⚠" .. running .. " tools")
     parts[#parts + 1] = { text = warn, hl = "NoctisWarning", drop = 0 }
   end
   if root then
     parts[#parts + 1] = { text = " " .. vim.fn.fnamemodify(root, ":~") .. " ", hl = "NoctisAIPath", right = true, drop = 5 }
   end
-  parts[#parts + 1] = { text = "Ctrl-\\ e: editöre dön ", hl = "NoctisDim", right = true, drop = 6 }
+  parts[#parts + 1] = { text = "Ctrl-\\ e: back to editor ", hl = "NoctisDim", right = true, drop = 6 }
   return require("noctis.ui.bar").build(parts, width)
 end
 
@@ -117,7 +117,7 @@ local function setup_win(win)
   wo.signcolumn = "no"
   wo.foldcolumn = "0"
   wo.list = false
-  -- Liste/diff görünümlerinde uzun satırlar sarılır (terminal satırlarını etkilemez)
+  -- Long lines wrap in the list/diff views (terminal lines are unaffected)
   wo.wrap = true
   wo.linebreak = true
   wo.breakindent = true
@@ -182,8 +182,8 @@ function M.open(opts)
     api.nvim_set_current_win(M.win)
     if vim.bo[buf].buftype == "terminal" then
       vim.cmd("startinsert")
-      -- Olay/otomatik komut içinden çağrıldıysa mod değişimi ertelenir;
-      -- terminal (yazma) modunun gerçekten etkin olmasını garanti et.
+      -- When called from an event/autocommand the mode change is deferred;
+      -- make sure terminal (insert) mode is really active.
       local win = M.win
       vim.schedule(function()
         if win and api.nvim_win_is_valid(win) and api.nvim_get_current_win() == win and vim.fn.mode() ~= "t" then
@@ -201,7 +201,7 @@ function M.show_view(view, focus)
   M.open({ focus = focus })
 end
 
----@param opts? {relayout?:boolean}  relayout: odağı editöre taşıma (pencere hemen yeniden açılacak)
+---@param opts? {relayout?:boolean}  relayout: don't move focus to the editor (the window reopens right away)
 function M.hide(opts)
   opts = opts or {}
   if M.is_visible() then
@@ -223,7 +223,7 @@ function M.hide(opts)
   M.win = nil
 end
 
---- Görünürse odakla; odaktaysa gizle; gizliyse göster (odak almadan).
+--- If visible, focus it; if focused, hide it; if hidden, show it (without taking focus).
 function M.toggle()
   if not M.is_visible() then
     M.open({ focus = false })
@@ -234,7 +234,7 @@ function M.toggle()
   end
 end
 
---- Yeni oturum için pencere hazırla (jobstart pencerenin buffer'ını kullanır)
+--- Prepare a window for a new session (jobstart uses the window's buffer)
 function M.prepare_window()
   if not M.is_visible() then
     M.open({ focus = false })
@@ -261,8 +261,8 @@ api.nvim_create_autocmd("User", {
     local mode = M.pick_mode()
     local focused = api.nvim_get_current_win() == M.win
     if mode ~= M.mode then
-      -- Yerleşim değişirken pencere yeniden oluşturulur; odak ve terminal
-      -- modu (open içindeki startinsert) korunur.
+      -- The window is recreated when the layout changes; focus and terminal
+      -- mode (the startinsert in open) are kept.
       M.hide({ relayout = true })
       M.open({ focus = focused })
     elseif mode == "full" then
@@ -274,8 +274,8 @@ api.nvim_create_autocmd("User", {
     end
   end,
 })
--- Pencerede başka bir buffer gösterilince Neovim pencere-yerel seçenekleri
--- (winbar dahil) sıfırlayabilir; Workbench penceresinde yeniden uygula.
+-- When another buffer is shown in the window, Neovim may reset window-local
+-- options (winbar included); re-apply them in the Workbench window.
 api.nvim_create_autocmd("BufWinEnter", {
   group = group,
   callback = function()

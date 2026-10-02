@@ -1,6 +1,6 @@
--- Kısayollar. Leader tabanlı eşlemeler registry'den gelir; burada yalnızca
--- mod bazlı küçük ergonomi eşlemeleri var. Temel Vim hareket, arama ve
--- düzenleme davranışları değiştirilmez.
+-- Keymaps. Leader-based mappings come from the registry; this file only has
+-- small mode-specific ergonomic mappings. Core Vim motion, search and
+-- editing behavior is left unchanged.
 local M = {}
 
 local map = vim.keymap.set
@@ -9,31 +9,31 @@ function M.setup()
   require("noctis.commands")
   require("noctis.registry").apply_keymaps()
 
-  -- Normal mod: pencereler arası geçiş
-  map("n", "<C-h>", "<C-w>h", { desc = "Soldaki pencere" })
-  map("n", "<C-j>", "<C-w>j", { desc = "Alttaki pencere" })
-  map("n", "<C-k>", "<C-w>k", { desc = "Üstteki pencere" })
-  map("n", "<C-l>", "<C-w>l", { desc = "Sağdaki pencere" })
-  -- Esc: arama vurgusunu temizle (Normal modda)
-  map("n", "<Esc>", "<cmd>nohlsearch<cr><Esc>", { desc = "Arama vurgusunu temizle" })
+  -- Normal mode: move between windows
+  map("n", "<C-h>", "<C-w>h", { desc = "Window left" })
+  map("n", "<C-j>", "<C-w>j", { desc = "Window below" })
+  map("n", "<C-k>", "<C-w>k", { desc = "Window above" })
+  map("n", "<C-l>", "<C-w>l", { desc = "Window right" })
+  -- Esc: clear search highlight (Normal mode)
+  map("n", "<Esc>", "<cmd>nohlsearch<cr><Esc>", { desc = "Clear search highlight" })
 
-  -- Ek kolay kayıt (tek yol değil: Space f s de çalışır). Insert modda
-  -- Ctrl-S, Neovim'in LSP imza yardımı için ayrılmış olarak kalır.
+  -- An extra easy save (not the only way: Space f s works too). In Insert mode
+  -- Ctrl-S stays reserved for Neovim's LSP signature help.
   map({ "n", "x" }, "<C-s>", function()
     require("noctis.registry").run("files.save")
-  end, { desc = "Dosyayı kaydet" })
+  end, { desc = "Save file" })
 
-  -- Visual: girintilemede seçimi koru
-  map("x", "<", "<gv", { desc = "Girintiyi azalt" })
-  map("x", ">", ">gv", { desc = "Girintiyi artır" })
+  -- Visual: keep the selection when indenting
+  map("x", "<", "<gv", { desc = "Decrease indent" })
+  map("x", ">", ">gv", { desc = "Increase indent" })
 
-  -- Terminal modu: Esc ve Ctrl-C uygulamaya (shell / AI CLI) gider.
-  -- Çıkış yolları Neovim'in <C-\> önekiyle, ayrı ve görünür tanımlıdır:
-  --   Ctrl-\ Ctrl-n  terminalde Normal moda geç (yerleşik)
-  --   Ctrl-\ e       editör penceresine dön
+  -- Terminal mode: Esc and Ctrl-C go to the application (shell / AI CLI).
+  -- The ways out use Neovim's <C-\> prefix and are separate and visible:
+  --   Ctrl-\ Ctrl-n  Normal mode inside the terminal (built-in)
+  --   Ctrl-\ e       back to the editor window
   map("t", "<C-\\>e", function()
     require("noctis.ui.layout").focus_editor()
-  end, { desc = "Editöre dön" })
+  end, { desc = "Back to editor" })
 end
 
 return M

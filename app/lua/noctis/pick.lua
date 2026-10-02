@@ -1,5 +1,5 @@
--- Bulanık arama sarmalayıcısı: snacks.picker varsa onu kullanır; yoksa
--- (güvenli mod, eksik eklenti) yerleşik Neovim araçlarıyla çalışır.
+-- Fuzzy finder wrapper: uses snacks.picker when available; otherwise
+-- (safe mode, missing plugin) it works with built-in Neovim tools.
 local M = {}
 
 local U = require("noctis.util")
@@ -21,9 +21,9 @@ function M.files(opts)
   opts = opts or {}
   local S = snacks()
   if S then
-    return S.picker.files({ cwd = root(), hidden = opts.hidden, ignored = opts.ignored, title = opts.ignored and "Dosyalar (tümü)" or "Dosyalar" })
+    return S.picker.files({ cwd = root(), hidden = opts.hidden, ignored = opts.ignored, title = opts.ignored and "Files (all)" or "Files" })
   end
-  vim.ui.input({ prompt = "Dosya adı (parça): " }, function(q)
+  vim.ui.input({ prompt = "File name (part): " }, function(q)
     if not q then
       return
     end
@@ -45,10 +45,10 @@ function M.files(opts)
       end
     end
     if #matches == 0 then
-      U.info("Eşleşen dosya yok.")
+      U.info("No matching files.")
       return
     end
-    vim.ui.select(matches, { prompt = "Dosya" }, function(f)
+    vim.ui.select(matches, { prompt = "File" }, function(f)
       if f then
         vim.cmd("edit " .. vim.fn.fnameescape(root() .. "/" .. f))
       end
@@ -64,7 +64,7 @@ function M.grep(opts)
     if opts.word then
       return S.picker.grep_word({ cwd = root() })
     end
-    return S.picker.grep({ cwd = root(), hidden = opts.hidden, ignored = opts.ignored, title = opts.ignored and "Projede ara (tümü)" or "Projede ara" })
+    return S.picker.grep({ cwd = root(), hidden = opts.hidden, ignored = opts.ignored, title = opts.ignored and "Search project (all)" or "Search project" })
   end
   local function run(q)
     if not q or q == "" then
@@ -81,9 +81,9 @@ function M.grep(opts)
     args[#args + 1] = q
     local res = vim.system(args, { cwd = root(), text = true }):wait(30000)
     local lines = vim.split(res.stdout or "", "\n", { trimempty = true })
-    vim.fn.setqflist({}, " ", { title = "Ara: " .. q, lines = lines, efm = "%f:%l:%c:%m" })
+    vim.fn.setqflist({}, " ", { title = "Search: " .. q, lines = lines, efm = "%f:%l:%c:%m" })
     if #lines == 0 then
-      U.info("Sonuç yok.")
+      U.info("No results.")
     else
       vim.cmd("botright copen")
     end
@@ -91,7 +91,7 @@ function M.grep(opts)
   if opts.word then
     return run(vim.fn.expand("<cword>"))
   end
-  vim.ui.input({ prompt = "Projede ara: " }, run)
+  vim.ui.input({ prompt = "Search project: " }, run)
 end
 
 function M.buffers()
@@ -106,7 +106,7 @@ function M.buffers()
     prompt = "Buffer",
     format_item = function(b)
       local n = vim.api.nvim_buf_get_name(b)
-      return (n == "" and "[adsız]" or vim.fn.fnamemodify(n, ":~:.")) .. (vim.bo[b].modified and " ●" or "")
+      return (n == "" and "[No Name]" or vim.fn.fnamemodify(n, ":~:.")) .. (vim.bo[b].modified and " ●" or "")
     end,
   }, function(b)
     if b then
@@ -123,7 +123,7 @@ function M.recent()
   local files = vim.tbl_filter(function(f)
     return vim.uv.fs_stat(f) ~= nil
   end, vim.list_slice(vim.v.oldfiles, 1, 50))
-  vim.ui.select(files, { prompt = "Son dosyalar", format_item = function(f)
+  vim.ui.select(files, { prompt = "Recent files", format_item = function(f)
     return vim.fn.fnamemodify(f, ":~:.")
   end }, function(f)
     if f then
@@ -137,7 +137,7 @@ function M.lines()
   if S then
     return S.picker.lines()
   end
-  U.info("Bu dosyada aramak için / tuşunu kullanın.")
+  U.info("To search in this file, use the / key.")
   vim.api.nvim_feedkeys("/", "n", false)
 end
 

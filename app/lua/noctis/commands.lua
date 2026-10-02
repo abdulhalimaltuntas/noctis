@@ -1,20 +1,20 @@
--- NOCTIS komut tanımları (tek kaynak). Her komut palette görünür; kısayolu
--- olanlar Normal mod eşlemesi olarak uygulanır ve which-key'de listelenir.
+-- NOCTIS command definitions (single source of truth). Every command shows up
+-- in the palette; those with a key are applied as Normal mode mappings and listed in which-key.
 local R = require("noctis.registry")
 local U = require("noctis.util")
 
 local function plugin(name)
   return function()
     if U.is_safe_mode() then
-      return false, "güvenli modda eklentiler kapalı"
+      return false, "plugins are disabled in safe mode"
     end
     local ok, cfg = pcall(require, "lazy.core.config")
     if not ok then
-      return false, "eklentiler kurulu değil (noctis --setup)"
+      return false, "plugins are not installed (noctis --setup)"
     end
     local p = cfg.plugins[name]
     if not p or not vim.uv.fs_stat(p.dir) then
-      return false, name .. " kurulu değil (noctis --setup)"
+      return false, name .. " is not installed (noctis --setup)"
     end
     return true
   end
@@ -25,7 +25,7 @@ local function exe(name, hint)
     if U.has(name) then
       return true
     end
-    return false, ("`%s` bulunamadı%s"):format(name, hint and (" — " .. hint) or "")
+    return false, ("`%s` not found%s"):format(name, hint and (" — " .. hint) or "")
   end
 end
 
@@ -33,19 +33,19 @@ local function lsp_attached()
   if #vim.lsp.get_clients({ bufnr = 0 }) > 0 then
     return true
   end
-  return false, "bu buffer'a bağlı dil sunucusu yok (:NoctisLang)"
+  return false, "no language server attached to this buffer (:NoctisLang)"
 end
 
 local function m(mod)
   return require(mod)
 end
 
--- ── Genel ────────────────────────────────────────────────────────────────
+-- ── General ──────────────────────────────────────────────────────────────
 R.add({
   id = "palette",
-  title = "Komut paleti",
-  desc = "Tüm komutları adına, açıklamasına veya kısayoluna göre ara",
-  group = "Genel",
+  title = "Command palette",
+  desc = "Search every command by name, description or key",
+  group = "General",
   keys = "<leader><space>",
   run = function()
     m("noctis.palette").open()
@@ -53,9 +53,9 @@ R.add({
 })
 R.add({
   id = "help",
-  title = "Yardım ve kısayollar",
-  desc = "Temel kullanım, modlar ve kısayol rehberi",
-  group = "Genel",
+  title = "Help and keymaps",
+  desc = "Basic usage, modes and a key guide",
+  group = "General",
   keys = "<leader>?",
   run = function()
     m("noctis.help").open()
@@ -63,9 +63,9 @@ R.add({
 })
 R.add({
   id = "help.tutorial",
-  title = "Bir dakikalık rehber",
-  desc = "Dosya aç, yaz, kaydet, paleti aç, güvenli çık",
-  group = "Genel",
+  title = "One-minute tour",
+  desc = "Open a file, type, save, open the palette, quit safely",
+  group = "General",
   keys = "<leader>ht",
   run = function()
     m("noctis.onboarding").start()
@@ -73,9 +73,9 @@ R.add({
 })
 R.add({
   id = "help.keys",
-  title = "Tüm kısayolları ara",
-  desc = "Etkin tüm eşlemeleri (eklentiler dahil) listele",
-  group = "Genel",
+  title = "Search all keymaps",
+  desc = "List every active mapping (plugins included)",
+  group = "General",
   keys = "<leader>hk",
   run = function()
     m("noctis.help").keymaps()
@@ -83,9 +83,9 @@ R.add({
 })
 R.add({
   id = "dashboard",
-  title = "Başlangıç ekranı",
-  desc = "Son dosyalar, son projeler ve hızlı eylemler",
-  group = "Genel",
+  title = "Dashboard",
+  desc = "Recent files, recent projects and quick actions",
+  group = "General",
   keys = "<leader>hd",
   run = function()
     m("noctis.ui.dashboard").open({ force = true })
@@ -93,9 +93,9 @@ R.add({
 })
 R.add({
   id = "health",
-  title = "Sağlık kontrolü",
-  desc = "Bağımlılıklar, terminal, clipboard ve AI profilleri (:checkhealth noctis)",
-  group = "Genel",
+  title = "Health check",
+  desc = "Dependencies, terminal, clipboard and AI profiles (:checkhealth noctis)",
+  group = "General",
   keys = "<leader>hh",
   run = function()
     vim.cmd("checkhealth noctis")
@@ -103,9 +103,9 @@ R.add({
 })
 R.add({
   id = "plugins",
-  title = "Eklenti yöneticisi",
-  desc = "Lazy.nvim: durum, kilit dosyasına göre geri yükleme, güncelleme",
-  group = "Genel",
+  title = "Plugin manager",
+  desc = "Lazy.nvim: status, restore from the lockfile, update",
+  group = "General",
   keys = "<leader>hp",
   check = plugin("lazy.nvim"),
   run = function()
@@ -114,9 +114,9 @@ R.add({
 })
 R.add({
   id = "lang",
-  title = "Dil paketleri",
-  desc = "Python, JS/TS, HTML/CSS, JSON, Lua, Bash: sunucu/parser/formatter durumu ve kurulum",
-  group = "Genel",
+  title = "Language packs",
+  desc = "Python, JS/TS, HTML/CSS, JSON, Lua, Bash: server/parser/formatter status and install",
+  group = "General",
   keys = "<leader>hl",
   run = function()
     m("noctis.lang").open()
@@ -124,21 +124,21 @@ R.add({
 })
 R.add({
   id = "config.open",
-  title = "Kullanıcı ayarlarını aç",
-  desc = "config.lua (güncellemeler bu dosyaya dokunmaz)",
-  group = "Genel",
+  title = "Open user settings",
+  desc = "config.lua (updates never touch this file)",
+  group = "General",
   keys = "<leader>hc",
   run = function()
     m("noctis.userconfig").open()
   end,
 })
 
--- ── Dosya ────────────────────────────────────────────────────────────────
+-- ── File ─────────────────────────────────────────────────────────────────
 R.add({
   id = "files.find",
-  title = "Dosya bul",
-  desc = "Projede dosya adına göre bulanık arama (.gitignore'a uyar)",
-  group = "Dosya",
+  title = "Find file",
+  desc = "Fuzzy search by file name in the project (respects .gitignore)",
+  group = "File",
   keys = "<leader>ff",
   run = function()
     m("noctis.pick").files()
@@ -146,9 +146,9 @@ R.add({
 })
 R.add({
   id = "files.find_all",
-  title = "Dosya bul (gizli + yok sayılanlar dahil)",
-  desc = ".gitignore ile dışlanan ve gizli dosyaları da ara",
-  group = "Dosya",
+  title = "Find file (including hidden + ignored)",
+  desc = "Also search files excluded by .gitignore and hidden files",
+  group = "File",
   keys = "<leader>fF",
   run = function()
     m("noctis.pick").files({ hidden = true, ignored = true })
@@ -156,40 +156,40 @@ R.add({
 })
 R.add({
   id = "files.grep",
-  title = "Projede metin ara",
-  desc = "Önizlemeli canlı arama; sonuç doğru satıra götürür",
-  group = "Dosya",
+  title = "Search text in project",
+  desc = "Live search with preview; results jump to the right line",
+  group = "File",
   keys = "<leader>fg",
-  check = exe("rg", "ripgrep kurun"),
+  check = exe("rg", "install ripgrep"),
   run = function()
     m("noctis.pick").grep()
   end,
 })
 R.add({
   id = "files.grep_all",
-  title = "Projede metin ara (yok sayılanlar dahil)",
-  desc = ".gitignore ile dışlanan dosyalarda da ara",
-  group = "Dosya",
+  title = "Search text in project (including ignored)",
+  desc = "Also search files excluded by .gitignore",
+  group = "File",
   keys = "<leader>fG",
-  check = exe("rg", "ripgrep kurun"),
+  check = exe("rg", "install ripgrep"),
   run = function()
     m("noctis.pick").grep({ hidden = true, ignored = true })
   end,
 })
 R.add({
   id = "files.grep_word",
-  title = "İmleçteki kelimeyi ara",
-  group = "Dosya",
+  title = "Search word under cursor",
+  group = "File",
   keys = "<leader>fw",
-  check = exe("rg", "ripgrep kurun"),
+  check = exe("rg", "install ripgrep"),
   run = function()
     m("noctis.pick").grep({ word = true })
   end,
 })
 R.add({
   id = "files.buffers",
-  title = "Açık buffer ara",
-  group = "Dosya",
+  title = "Search open buffers",
+  group = "File",
   keys = "<leader>fb",
   run = function()
     m("noctis.pick").buffers()
@@ -197,8 +197,8 @@ R.add({
 })
 R.add({
   id = "files.recent",
-  title = "Son dosyalar",
-  group = "Dosya",
+  title = "Recent files",
+  group = "File",
   keys = "<leader>fr",
   run = function()
     m("noctis.pick").recent()
@@ -206,9 +206,9 @@ R.add({
 })
 R.add({
   id = "files.save",
-  title = "Dosyayı kaydet",
-  desc = "Diskteki sürüm dışarıdan değiştiyse önce sorar",
-  group = "Dosya",
+  title = "Save file",
+  desc = "Asks first if the file was changed on disk",
+  group = "File",
   keys = "<leader>fs",
   run = function()
     m("noctis.files").save()
@@ -216,8 +216,8 @@ R.add({
 })
 R.add({
   id = "files.save_all",
-  title = "Tüm değişmiş dosyaları kaydet",
-  group = "Dosya",
+  title = "Save all modified files",
+  group = "File",
   keys = "<leader>fS",
   run = function()
     m("noctis.files").save_all()
@@ -225,9 +225,9 @@ R.add({
 })
 R.add({
   id = "files.new",
-  title = "Yeni dosya",
-  desc = "Proje kökünde yol sorarak dosya oluştur",
-  group = "Dosya",
+  title = "New file",
+  desc = "Create a file, asking for a path from the project root",
+  group = "File",
   keys = "<leader>fn",
   run = function()
     m("noctis.files").new_file()
@@ -235,8 +235,8 @@ R.add({
 })
 R.add({
   id = "files.rename",
-  title = "Dosyayı yeniden adlandır / taşı",
-  group = "Dosya",
+  title = "Rename / move file",
+  group = "File",
   keys = "<leader>fR",
   run = function()
     m("noctis.files").rename()
@@ -244,9 +244,9 @@ R.add({
 })
 R.add({
   id = "files.delete",
-  title = "Dosyayı sil (geri alınabilir)",
-  desc = "Onay ister; dosya NOCTIS çöp kutusuna taşınır",
-  group = "Dosya",
+  title = "Delete file (recoverable)",
+  desc = "Asks for confirmation; the file is moved to the NOCTIS trash",
+  group = "File",
   keys = "<leader>fD",
   run = function()
     m("noctis.files").delete()
@@ -254,8 +254,8 @@ R.add({
 })
 R.add({
   id = "files.trash",
-  title = "Çöp kutusu: silineni geri yükle",
-  group = "Dosya",
+  title = "Trash: restore a deleted file",
+  group = "File",
   keys = "<leader>fT",
   run = function()
     m("noctis.trash").pick()
@@ -263,20 +263,20 @@ R.add({
 })
 R.add({
   id = "explorer",
-  title = "Dosya gezginini aç/kapat",
-  desc = "Git durumu, gizli dosyalar (H), yok sayılanlar (I)",
-  group = "Dosya",
+  title = "Toggle file explorer",
+  desc = "Git status, hidden files (H), ignored files (I)",
+  group = "File",
   keys = "<leader>e",
   run = function()
     m("noctis.explorer").toggle()
   end,
 })
 
--- ── Proje ────────────────────────────────────────────────────────────────
+-- ── Project ──────────────────────────────────────────────────────────────
 R.add({
   id = "project.recent",
-  title = "Son projeler",
-  group = "Proje",
+  title = "Recent projects",
+  group = "Project",
   keys = "<leader>pp",
   run = function()
     m("noctis.project").pick_recent()
@@ -284,8 +284,8 @@ R.add({
 })
 R.add({
   id = "project.open",
-  title = "Proje aç (klasör seç)",
-  group = "Proje",
+  title = "Open project (pick a folder)",
+  group = "Project",
   keys = "<leader>po",
   run = function()
     m("noctis.project").open_prompt()
@@ -293,9 +293,9 @@ R.add({
 })
 R.add({
   id = "project.set_root",
-  title = "Proje kökünü elle belirle",
-  desc = "Git kökü yanlışsa veya yoksa aktif kökü değiştir",
-  group = "Proje",
+  title = "Set project root manually",
+  desc = "Change the active root if the Git root is wrong or missing",
+  group = "Project",
   keys = "<leader>pr",
   run = function()
     m("noctis.project").set_root_prompt()
@@ -303,8 +303,8 @@ R.add({
 })
 R.add({
   id = "project.tasks",
-  title = "Görev çalıştır (run/test/build)",
-  desc = "Seçilen komutu terminalde başlatır; kendiliğinden hiçbir şey çalışmaz",
+  title = "Run a task (run/test/build)",
+  desc = "Starts the chosen command in a terminal; nothing runs on its own",
   group = "Terminal",
   keys = "<leader>tr",
   run = function()
@@ -313,7 +313,7 @@ R.add({
 })
 R.add({
   id = "project.task_stop",
-  title = "Çalışan görevi iptal et",
+  title = "Cancel the running task",
   group = "Terminal",
   keys = "<leader>tx",
   run = function()
@@ -321,33 +321,33 @@ R.add({
   end,
 })
 
--- ── Ara / Değiştir ───────────────────────────────────────────────────────
+-- ── Search / Replace ─────────────────────────────────────────────────────
 R.add({
   id = "replace.project",
-  title = "Projede bul ve değiştir (önizlemeli)",
-  desc = "Kapsam ve tüm değişiklikler uygulanmadan önce gösterilir",
-  group = "Ara / Değiştir",
+  title = "Find and replace in project (with preview)",
+  desc = "Scope and every change are shown before anything is applied",
+  group = "Search / Replace",
   keys = "<leader>sr",
-  check = exe("rg", "ripgrep kurun"),
+  check = exe("rg", "install ripgrep"),
   run = function()
     m("noctis.replace").open()
   end,
 })
 R.add({
   id = "search.buffer",
-  title = "Bu dosyada satır ara",
-  group = "Ara / Değiştir",
+  title = "Search lines in this file",
+  group = "Search / Replace",
   keys = "<leader>sb",
   run = function()
     m("noctis.pick").lines()
   end,
 })
 
--- ── Buffer / Pencere ─────────────────────────────────────────────────────
+-- ── Buffer / Window ──────────────────────────────────────────────────────
 R.add({
   id = "buffer.delete",
-  title = "Buffer'ı güvenli kapat",
-  desc = "Kaydedilmemiş değişiklik varsa sorar; pencere düzeni korunur",
+  title = "Close buffer safely",
+  desc = "Asks if there are unsaved changes; the window layout is kept",
   group = "Buffer",
   keys = "<leader>bd",
   run = function()
@@ -356,8 +356,8 @@ R.add({
 })
 R.add({
   id = "buffer.others",
-  title = "Diğer buffer'ları kapat",
-  desc = "Kaydedilmemiş olanlar açık kalır",
+  title = "Close other buffers",
+  desc = "Unsaved ones stay open",
   group = "Buffer",
   keys = "<leader>bo",
   run = function()
@@ -366,8 +366,8 @@ R.add({
 })
 R.add({
   id = "window.vsplit",
-  title = "Dikey böl",
-  group = "Pencere",
+  title = "Split vertically",
+  group = "Window",
   keys = "<leader>wv",
   run = function()
     vim.cmd("vsplit")
@@ -375,8 +375,8 @@ R.add({
 })
 R.add({
   id = "window.split",
-  title = "Yatay böl",
-  group = "Pencere",
+  title = "Split horizontally",
+  group = "Window",
   keys = "<leader>ws",
   run = function()
     vim.cmd("split")
@@ -384,9 +384,9 @@ R.add({
 })
 R.add({
   id = "window.close",
-  title = "Pencereyi kapat",
-  desc = "Buffer açık kalır",
-  group = "Pencere",
+  title = "Close window",
+  desc = "The buffer stays open",
+  group = "Window",
   keys = "<leader>wd",
   run = function()
     m("noctis.buffers").close_window()
@@ -394,20 +394,20 @@ R.add({
 })
 R.add({
   id = "window.equal",
-  title = "Pencere boyutlarını eşitle",
-  group = "Pencere",
+  title = "Equalize window sizes",
+  group = "Window",
   keys = "<leader>w=",
   run = function()
     vim.cmd("wincmd =")
   end,
 })
 
--- ── Çıkış / Oturum ───────────────────────────────────────────────────────
+-- ── Quit / Session ───────────────────────────────────────────────────────
 R.add({
   id = "quit",
-  title = "Güvenli çık",
-  desc = "Kaydedilmemiş dosyaları ve çalışan terminal/AI süreçlerini göstererek çıkar",
-  group = "Çıkış / Oturum",
+  title = "Quit safely",
+  desc = "Quits after showing unsaved files and running terminal/AI processes",
+  group = "Quit / Session",
   keys = "<leader>qq",
   run = function()
     m("noctis.quit").quit()
@@ -415,9 +415,9 @@ R.add({
 })
 R.add({
   id = "session.restore",
-  title = "Proje oturumunu geri yükle",
-  desc = "Açık dosyalar ve düzen; kaydedilmemiş buffer'ların üzerine yazmaz",
-  group = "Çıkış / Oturum",
+  title = "Restore project session",
+  desc = "Open files and layout; never overwrites unsaved buffers",
+  group = "Quit / Session",
   keys = "<leader>qr",
   run = function()
     m("noctis.session").restore()
@@ -425,8 +425,8 @@ R.add({
 })
 R.add({
   id = "session.save",
-  title = "Oturumu şimdi kaydet",
-  group = "Çıkış / Oturum",
+  title = "Save session now",
+  group = "Quit / Session",
   keys = "<leader>qs",
   run = function()
     m("noctis.session").save({ notify = true })
@@ -436,8 +436,8 @@ R.add({
 -- ── Terminal ─────────────────────────────────────────────────────────────
 R.add({
   id = "terminal.toggle",
-  title = "Terminal panelini aç/kapat",
-  desc = "Gizlemek süreci öldürmez; Ctrl-\\ e ile editöre dönülür",
+  title = "Toggle terminal panel",
+  desc = "Hiding it doesn't kill the process; Ctrl-\\ e returns to the editor",
   group = "Terminal",
   keys = "<leader>tt",
   run = function()
@@ -446,7 +446,7 @@ R.add({
 })
 R.add({
   id = "terminal.new",
-  title = "Yeni terminal",
+  title = "New terminal",
   group = "Terminal",
   keys = "<leader>tn",
   run = function()
@@ -455,7 +455,7 @@ R.add({
 })
 R.add({
   id = "terminal.pick",
-  title = "Terminaller arasında geç",
+  title = "Switch between terminals",
   group = "Terminal",
   keys = "<leader>ts",
   run = function()
@@ -466,8 +466,8 @@ R.add({
 -- ── AI Workbench ─────────────────────────────────────────────────────────
 R.add({
   id = "ai.toggle",
-  title = "AI Workbench'i aç/kapat",
-  desc = "Gizlemek AI sürecini durdurmaz",
+  title = "Toggle AI Workbench",
+  desc = "Hiding it doesn't stop the AI process",
   group = "AI",
   keys = "<leader>aa",
   run = function()
@@ -476,8 +476,8 @@ R.add({
 })
 R.add({
   id = "ai.new",
-  title = "Yeni AI oturumu",
-  desc = "Araç seç (Codex, Claude Code, Kimi Code, özel); önce inceleme başlangıcı kaydedilir",
+  title = "New AI session",
+  desc = "Pick a tool (Codex, Claude Code, Kimi Code, custom); the review baseline is recorded first",
   group = "AI",
   keys = "<leader>an",
   run = function()
@@ -486,7 +486,7 @@ R.add({
 })
 R.add({
   id = "ai.switch",
-  title = "AI oturumları arasında geç",
+  title = "Switch between AI sessions",
   group = "AI",
   keys = "<leader>as",
   run = function()
@@ -495,8 +495,8 @@ R.add({
 })
 R.add({
   id = "ai.review",
-  title = "AI aralığındaki değişiklikleri incele",
-  desc = "İnceleme başlangıcından bu yana tespit edilen dosya değişiklikleri",
+  title = "Review changes in the AI interval",
+  desc = "File changes detected since the review baseline",
   group = "AI",
   keys = "<leader>ad",
   run = function()
@@ -505,8 +505,8 @@ R.add({
 })
 R.add({
   id = "ai.checkpoint",
-  title = "İnceleme aralığını kapat, yeni başlangıç al",
-  desc = "Dosyaları değiştirmez; yalnız yeni bir başlangıç kaydı oluşturur",
+  title = "Close the review interval, take a new baseline",
+  desc = "Doesn't change any files; only records a new baseline",
   group = "AI",
   keys = "<leader>ac",
   run = function()
@@ -515,7 +515,7 @@ R.add({
 })
 R.add({
   id = "ai.focus",
-  title = "AI terminaline odaklan",
+  title = "Focus the AI terminal",
   group = "AI",
   keys = "<leader>af",
   run = function()
@@ -524,8 +524,8 @@ R.add({
 })
 R.add({
   id = "ai.stop",
-  title = "AI oturumunu durdur",
-  desc = "Onay ister; süreç sonlandırılır",
+  title = "Stop AI session",
+  desc = "Asks for confirmation; the process is terminated",
   group = "AI",
   keys = "<leader>ax",
   run = function()
@@ -534,7 +534,7 @@ R.add({
 })
 R.add({
   id = "ai.restart",
-  title = "AI oturumunu yeniden başlat",
+  title = "Restart AI session",
   group = "AI",
   keys = "<leader>ar",
   run = function()
@@ -543,8 +543,8 @@ R.add({
 })
 R.add({
   id = "ai.resume",
-  title = "AI aracının önceki oturumuna devam et",
-  desc = "Yalnız aracın belgelenmiş devam etme bayrağıyla (claude -c, codex resume --last, kimi -c)",
+  title = "Resume the AI tool's previous session",
+  desc = "Only via the tool's documented resume flag (claude -c, codex resume --last, kimi -c)",
   group = "AI",
   keys = "<leader>aR",
   run = function()
@@ -553,8 +553,8 @@ R.add({
 })
 R.add({
   id = "ai.revert_hunk",
-  title = "Bu hunk'ı inceleme başlangıcına döndür",
-  desc = "Editördeki dosyada imleçteki aralık değişikliği; disk incelenen sürümle aynı olmalı",
+  title = "Revert this hunk to the review baseline",
+  desc = "The interval change under the cursor in the editor; the disk must match the reviewed version",
   group = "AI",
   keys = "<leader>ah",
   run = function()
@@ -563,8 +563,8 @@ R.add({
 })
 R.add({
   id = "ai.revert_file",
-  title = "Bu dosyayı inceleme başlangıcına döndür",
-  desc = "Onay ister; önceki içerik yoksa yapılmaz; mevcut içerik önce yedeklenir",
+  title = "Revert this file to the review baseline",
+  desc = "Asks for confirmation; refused if there is no previous content; current content is backed up first",
   group = "AI",
   keys = "<leader>aU",
   run = function()
@@ -573,8 +573,8 @@ R.add({
 })
 R.add({
   id = "ai.reviewed",
-  title = "Bu dosyayı incelendi olarak işaretle",
-  desc = "İçerik yeniden değişirse işaret kendiliğinden geçersizleşir",
+  title = "Mark this file as reviewed",
+  desc = "The mark is invalidated automatically if the content changes again",
   group = "AI",
   keys = "<leader>am",
   run = function()
@@ -583,8 +583,8 @@ R.add({
 })
 R.add({
   id = "ai.scope",
-  title = "İnceleme kapsamını göster",
-  desc = "Başlangıç kaydına alınan / dışlanan dosyalar ve sınırlar",
+  title = "Show review scope",
+  desc = "Files included in / excluded from the baseline, and limits",
   group = "AI",
   keys = "<leader>ai",
   run = function()
@@ -593,8 +593,8 @@ R.add({
 })
 R.add({
   id = "ai.context",
-  title = "Seçimi AI'a bağlam olarak hazırla",
-  desc = "İçerik önce gösterilir; onaylanmadan gönderilmez",
+  title = "Prepare selection as AI context",
+  desc = "The content is shown first; nothing is sent without confirmation",
   group = "AI",
   keys = "<leader>ae",
   mode = { "n", "x" },
@@ -606,8 +606,8 @@ R.add({
 -- ── Git ──────────────────────────────────────────────────────────────────
 R.add({
   id = "git.view",
-  title = "Git görünümü",
-  desc = "Lazygit varsa onu açar; yoksa NOCTIS Git özeti",
+  title = "Git view",
+  desc = "Opens lazygit if available; otherwise the NOCTIS Git summary",
   group = "Git",
   keys = "<leader>gg",
   run = function()
@@ -616,7 +616,7 @@ R.add({
 })
 R.add({
   id = "git.status",
-  title = "Git değişen dosyalar",
+  title = "Git changed files",
   group = "Git",
   keys = "<leader>gs",
   check = exe("git"),
@@ -626,8 +626,8 @@ R.add({
 })
 R.add({
   id = "git.diff_file",
-  title = "Dosya diff'i (Git)",
-  desc = "Çalışma ağacı ile index/HEAD arasındaki fark",
+  title = "File diff (Git)",
+  desc = "Difference between the working tree and the index/HEAD",
   group = "Git",
   keys = "<leader>gd",
   check = exe("git"),
@@ -637,7 +637,7 @@ R.add({
 })
 R.add({
   id = "git.hunk_preview",
-  title = "Hunk önizle",
+  title = "Preview hunk",
   group = "Git",
   keys = "<leader>gp",
   check = plugin("gitsigns.nvim"),
@@ -647,7 +647,7 @@ R.add({
 })
 R.add({
   id = "git.blame_line",
-  title = "Satırın blame bilgisi",
+  title = "Blame for this line",
   group = "Git",
   keys = "<leader>gb",
   check = plugin("gitsigns.nvim"),
@@ -657,8 +657,8 @@ R.add({
 })
 R.add({
   id = "git.hunk_reset",
-  title = "Hunk'ı geri al (Git)",
-  desc = "Onay ister; yalnız imleçteki hunk",
+  title = "Reset hunk (Git)",
+  desc = "Asks for confirmation; only the hunk under the cursor",
   group = "Git",
   keys = "<leader>gr",
   check = plugin("gitsigns.nvim"),
@@ -667,11 +667,11 @@ R.add({
   end,
 })
 
--- ── Kod ──────────────────────────────────────────────────────────────────
+-- ── Code ─────────────────────────────────────────────────────────────────
 R.add({
   id = "code.action",
   title = "Code action",
-  group = "Kod",
+  group = "Code",
   keys = "<leader>ca",
   mode = { "n", "x" },
   check = lsp_attached,
@@ -681,8 +681,8 @@ R.add({
 })
 R.add({
   id = "code.rename",
-  title = "Sembolü yeniden adlandır",
-  group = "Kod",
+  title = "Rename symbol",
+  group = "Code",
   keys = "<leader>cr",
   check = lsp_attached,
   run = function()
@@ -691,8 +691,8 @@ R.add({
 })
 R.add({
   id = "code.format",
-  title = "Dosyayı biçimlendir",
-  group = "Kod",
+  title = "Format file",
+  group = "Code",
   keys = "<leader>cf",
   mode = { "n", "x" },
   run = function()
@@ -701,8 +701,8 @@ R.add({
 })
 R.add({
   id = "code.definition",
-  title = "Tanıma git",
-  group = "Kod",
+  title = "Go to definition",
+  group = "Code",
   keys = "<leader>cd",
   check = lsp_attached,
   run = function()
@@ -711,8 +711,8 @@ R.add({
 })
 R.add({
   id = "code.references",
-  title = "Referanslar",
-  group = "Kod",
+  title = "References",
+  group = "Code",
   keys = "<leader>cu",
   check = lsp_attached,
   run = function()
@@ -721,8 +721,8 @@ R.add({
 })
 R.add({
   id = "code.symbols",
-  title = "Dosyadaki semboller",
-  group = "Kod",
+  title = "Symbols in file",
+  group = "Code",
   keys = "<leader>cs",
   check = lsp_attached,
   run = function()
@@ -731,9 +731,9 @@ R.add({
 })
 R.add({
   id = "code.hover",
-  title = "Belgeyi göster (hover)",
-  desc = "Kısayol: K",
-  group = "Kod",
+  title = "Show documentation (hover)",
+  desc = "Key: K",
+  group = "Code",
   check = lsp_attached,
   run = function()
     vim.lsp.buf.hover()
@@ -741,8 +741,8 @@ R.add({
 })
 R.add({
   id = "code.lsp_info",
-  title = "Dil sunucusu durumu",
-  group = "Kod",
+  title = "Language server status",
+  group = "Code",
   keys = "<leader>cl",
   run = function()
     vim.cmd("checkhealth vim.lsp")
@@ -750,20 +750,20 @@ R.add({
 })
 R.add({
   id = "format.toggle",
-  title = "Kaydederken biçimlendirmeyi aç/kapat (dosya türü)",
-  desc = "Varsayılan kapalı; bu oturum için geçerli",
-  group = "Kod",
+  title = "Toggle format-on-save (filetype)",
+  desc = "Off by default; applies to this session",
+  group = "Code",
   keys = "<leader>uf",
   run = function()
     m("noctis.format").toggle_on_save()
   end,
 })
 
--- ── Tanılama ─────────────────────────────────────────────────────────────
+-- ── Diagnostics ──────────────────────────────────────────────────────────
 R.add({
   id = "diag.list",
-  title = "Diagnostics listesi (proje)",
-  group = "Tanılama",
+  title = "Diagnostics list (project)",
+  group = "Diagnostics",
   keys = "<leader>xx",
   run = function()
     m("noctis.pick").diagnostics()
@@ -771,8 +771,8 @@ R.add({
 })
 R.add({
   id = "diag.buffer",
-  title = "Diagnostics (bu dosya)",
-  group = "Tanılama",
+  title = "Diagnostics (this file)",
+  group = "Diagnostics",
   keys = "<leader>xb",
   run = function()
     m("noctis.pick").diagnostics({ buffer = true })
@@ -780,8 +780,8 @@ R.add({
 })
 R.add({
   id = "diag.line",
-  title = "Satırdaki tanılamayı göster",
-  group = "Tanılama",
+  title = "Show diagnostics for this line",
+  group = "Diagnostics",
   keys = "<leader>xl",
   run = function()
     vim.diagnostic.open_float()
@@ -789,20 +789,20 @@ R.add({
 })
 R.add({
   id = "diag.quickfix",
-  title = "Quickfix listesi",
-  group = "Tanılama",
+  title = "Quickfix list",
+  group = "Diagnostics",
   keys = "<leader>xq",
   run = function()
     m("noctis.ui.layout").toggle_qf()
   end,
 })
 
--- ── Arayüz ───────────────────────────────────────────────────────────────
+-- ── Interface ────────────────────────────────────────────────────────────
 R.add({
   id = "ui.theme",
-  title = "Tema seç",
+  title = "Pick theme",
   desc = "Midnight Violet, Glacier, Amber",
-  group = "Arayüz",
+  group = "Interface",
   keys = "<leader>ut",
   run = function()
     m("noctis.theme").pick()
@@ -810,9 +810,9 @@ R.add({
 })
 R.add({
   id = "ui.focus",
-  title = "Odak modunu aç/kapat",
-  desc = "Yan panelleri gizler, kodu ortalar",
-  group = "Arayüz",
+  title = "Toggle focus mode",
+  desc = "Hides side panels and centers the code",
+  group = "Interface",
   keys = "<leader>uz",
   run = function()
     m("noctis.ui.layout").toggle_focus()
@@ -820,8 +820,8 @@ R.add({
 })
 R.add({
   id = "ui.relnum",
-  title = "Göreli satır numaraları",
-  group = "Arayüz",
+  title = "Relative line numbers",
+  group = "Interface",
   keys = "<leader>un",
   run = function()
     vim.o.relativenumber = not vim.o.relativenumber
@@ -829,8 +829,8 @@ R.add({
 })
 R.add({
   id = "ui.wrap",
-  title = "Satır kaydırma (wrap)",
-  group = "Arayüz",
+  title = "Line wrap",
+  group = "Interface",
   keys = "<leader>uw",
   run = function()
     vim.wo.wrap = not vim.wo.wrap
@@ -838,20 +838,20 @@ R.add({
 })
 R.add({
   id = "ui.diagnostics",
-  title = "Diagnostics görünürlüğü",
-  group = "Arayüz",
+  title = "Diagnostics visibility",
+  group = "Interface",
   keys = "<leader>ud",
   run = function()
     local on = not vim.diagnostic.is_enabled()
     vim.diagnostic.enable(on)
-    U.info("Diagnostics " .. (on and "açık" or "gizli"))
+    U.info("Diagnostics " .. (on and "shown" or "hidden"))
   end,
 })
 R.add({
   id = "ui.typing",
-  title = "Yazma animasyonu",
-  desc = "Yazılan karakterin kısa parlamasını aç/kapat (bu oturum için)",
-  group = "Arayüz",
+  title = "Typing animation",
+  desc = "Toggle the brief glow behind typed characters (this session)",
+  group = "Interface",
   keys = "<leader>ua",
   run = function()
     require("noctis.ui.typing").toggle()
@@ -859,8 +859,8 @@ R.add({
 })
 R.add({
   id = "ui.inlay",
-  title = "Inlay hint'ler",
-  group = "Arayüz",
+  title = "Inlay hints",
+  group = "Interface",
   keys = "<leader>uh",
   check = lsp_attached,
   run = function()

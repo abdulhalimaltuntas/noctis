@@ -1,4 +1,4 @@
-# Yerel test/geliştirme çıktıları
+# Local test/development output
 *.swp
 .DS_Store
 /.test-home/

@@ -1,6 +1,6 @@
--- Entegre terminal paneli: proje kökünde gerçek PTY shell oturumları.
--- Panel gizlenince süreç çalışmaya devam eder; yeniden açılınca aynı oturuma
--- dönülür. Kapatma (Space b d) çalışan süreç için onay ister.
+-- Integrated terminal panel: real PTY shell sessions at the project root.
+-- The process keeps running when the panel is hidden; reopening returns to the
+-- same session. Closing it (Space b d) asks for confirmation while a process runs.
 local M = {}
 
 local U = require("noctis.util")
@@ -33,10 +33,10 @@ local function winbar()
   local parts = {}
   for i, t in ipairs(M.terms) do
     local active = t == M.current
-    local status = t.exited and ("  [çıktı " .. t.exited .. "]") or ""
+    local status = t.exited and ("  [exited " .. t.exited .. "]") or ""
     parts[#parts + 1] = (active and "%#NoctisAITabActive#" or "%#NoctisAITabInactive#") .. " " .. i .. " " .. t.label .. status .. " "
   end
-  return table.concat(parts, "%#NoctisPanel# ") .. "%#NoctisPanel#%=%#NoctisDim# Ctrl-\\ e: editöre dön · Space t t: gizle "
+  return table.concat(parts, "%#NoctisPanel# ") .. "%#NoctisPanel#%=%#NoctisDim# Ctrl-\\ e: back to editor · Space t t: hide "
 end
 
 function M.refresh_winbar()
@@ -89,7 +89,7 @@ function M.new(opts)
     end,
   })
   if job <= 0 then
-    U.error(("Terminal başlatılamadı: %s"):format(table.concat(cmd, " ")))
+    U.error(("Could not start the terminal: %s"):format(table.concat(cmd, " ")))
     api.nvim_buf_delete(buf, { force = true })
     return
   end
@@ -113,7 +113,7 @@ end
 
 function M.hide()
   if M.is_visible() then
-    -- Pencereyi kapat; buffer ve süreç yaşamaya devam eder
+    -- Close the window; the buffer and the process stay alive
     local others = vim.tbl_filter(function(w)
       return w ~= M.win and api.nvim_win_get_config(w).relative == ""
     end, api.nvim_tabpage_list_wins(0))
@@ -150,7 +150,7 @@ function M.pick()
   vim.ui.select(M.terms, {
     prompt = "Terminal",
     format_item = function(t)
-      return t.label .. (t.exited and (" (çıktı: " .. t.exited .. ")") or "") .. "  " .. vim.fn.fnamemodify(t.cwd, ":~")
+      return t.label .. (t.exited and (" (exited: " .. t.exited .. ")") or "") .. "  " .. vim.fn.fnamemodify(t.cwd, ":~")
     end,
   }, function(t)
     if t then
@@ -160,7 +160,7 @@ function M.pick()
   end)
 end
 
---- Çıkış özeti için çalışan shell'ler
+--- Running shells, for the quit summary
 function M.running()
   prune()
   local out = {}
@@ -172,7 +172,7 @@ function M.running()
   return out
 end
 
--- Pencere dışarıdan kapatılırsa (ör. :q) kaydı temizle
+-- If the window is closed from outside (e.g. :q), clean up the record
 api.nvim_create_autocmd("WinClosed", {
   group = api.nvim_create_augroup("noctis_terminal", { clear = true }),
   callback = function(ev)

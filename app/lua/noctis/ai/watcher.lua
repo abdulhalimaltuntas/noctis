@@ -1,9 +1,9 @@
--- Dosya sistemi izleyici. libuv fs_event'in `recursive` bayrağı Linux'ta
--- desteklenmez (sessizce yok sayılır; Neovim 0.12.4 üzerinde doğrulandı), bu
--- yüzden her dizin ayrı izlenir ve yeni oluşturulan dizinler olay geldikçe
--- eklenir. Sınıra ulaşılırsa (max_dirs veya inotify kotası) kalan kısım düşük
--- sıklıklı uzlaştırma taramasıyla takip edilir.
--- Bu modül hangi programın yazdığını bilmez; yalnız değişen yolu bildirir.
+-- File system watcher. libuv fs_event's `recursive` flag isn't supported on
+-- Linux (silently ignored; verified on Neovim 0.12.4), so every directory is
+-- watched separately and newly created directories are added as events
+-- arrive. When the limit is reached (max_dirs or the inotify quota) the rest is
+-- tracked by a low-frequency reconcile scan.
+-- This module doesn't know which program wrote a file; it only reports the changed path.
 local scope = require("noctis.ai.scope")
 local uv = vim.uv
 
@@ -46,7 +46,7 @@ function W:watch_dir(rel_dir)
   local abs = rel_dir == "" and self.root or (self.root .. "/" .. rel_dir)
   local st = uv.fs_lstat(abs)
   if not st or st.type ~= "directory" then
-    return -- sembolik bağlantılar izlenmez
+    return -- symbolic links are not watched
   end
   local h = uv.new_fs_event()
   if not h then
@@ -63,7 +63,7 @@ function W:watch_dir(rel_dir)
     end)
   end)
   if not ok then
-    -- ENOSPC: inotify izleme kotası doldu
+    -- ENOSPC: the inotify watch quota is exhausted
     self.errors = self.errors + 1
     self.overflow = true
     pcall(h.close, h)
@@ -94,7 +94,7 @@ function W:event(rel)
   local st = uv.fs_lstat(abs)
   if st and st.type == "directory" then
     if not self.handles[rel] and not scope.in_skipped_dir(rel) then
-      -- Yeni dizin: izlemeye al ve içindeki mevcut dosyaları bildir
+      -- New directory: start watching it and report the files already inside
       self:watch_tree(rel)
       for name, t in vim.fs.dir(abs, {
         depth = 20,
@@ -110,7 +110,7 @@ function W:event(rel)
     return
   end
   if not st and self.handles[rel] then
-    -- Dizin silindi: alt izleyicileri kapat, altındaki her şeyi yeniden denetlet
+    -- Directory deleted: close child watchers, have everything under it re-checked
     for d, h in pairs(self.handles) do
       if d == rel or d:sub(1, #rel + 1) == rel .. "/" then
         pcall(h.stop, h)

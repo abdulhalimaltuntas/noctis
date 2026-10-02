@@ -1,8 +1,8 @@
--- Projede bul ve değiştir. Uygulamadan önce kapsam ve tüm değişiklikler
--- önizlemede gösterilir; satırlar tek tek hariç tutulabilir.
--- Önizleme ve uygulama aynı motoru (ripgrep --replace) kullanır; uygulama
--- sırasında her satırın hâlâ önizlenen orijinal metinle aynı olduğu
--- doğrulanır, değilse o satır atlanır. Satır sonu biçimi (CRLF) korunur.
+-- Find and replace in the project. Before anything is applied, the scope and
+-- every change are shown in a preview; lines can be excluded one by one.
+-- Preview and apply use the same engine (ripgrep --replace); while applying,
+-- each line is verified to still match the previewed original text,
+-- otherwise that line is skipped. The line ending style (CRLF) is preserved.
 local M = {}
 
 local U = require("noctis.util")
@@ -12,10 +12,10 @@ local ns = api.nvim_create_namespace("noctis.replace")
 M.MAX = 5000
 
 local function rg_lines(args, r)
-  -- text=false: vim.system'in "\r\n" normalizasyonu CRLF satırlarını bozardı
+  -- text=false: vim.system's "\r\n" normalization would break CRLF lines
   local res = vim.system(args, { cwd = r, text = false }):wait(60000)
   if res.code ~= 0 and res.code ~= 1 then
-    return nil, vim.trim(res.stderr or "ripgrep hatası")
+    return nil, vim.trim(res.stderr or "ripgrep error")
   end
   local out = {}
   for line in (res.stdout or ""):gmatch("[^\n]+") do
@@ -51,7 +51,7 @@ function M.collect(q, r)
     return nil, err2
   end
   if #orig ~= #repl then
-    return nil, "eşleşme sayıları tutarsız (dosyalar arama sırasında değişmiş olabilir); tekrar deneyin"
+    return nil, "match counts are inconsistent (files may have changed during the search); try again"
   end
   local changes = {}
   for i, o in ipairs(orig) do
@@ -80,8 +80,8 @@ local function apply_file(path, list)
         skipped = skipped + 1
       end
     end
-    -- Temiz buffer'lar diske yazılır (diğer dosyalarla tutarlı); kaydedilmemiş
-    -- düzenlemesi olan buffer yalnız güncellenir, kaydetme kullanıcıda kalır.
+    -- Clean buffers are written to disk (consistent with the other files); a
+    -- buffer with unsaved edits is only updated, saving stays with the user.
     if not was_modified and applied > 0 and not require("noctis.sync").disk_changed(buf) then
       api.nvim_buf_call(buf, function()
         vim.cmd("silent write")
@@ -106,7 +106,7 @@ local function apply_file(path, list)
     local st = vim.uv.fs_stat(path)
     local ok, err = U.write_file(path, table.concat(lines, "\n"), st and st.mode % 4096 or 420)
     if not ok then
-      U.error("Yazılamadı: " .. path .. " — " .. tostring(err))
+      U.error("Could not write: " .. path .. " — " .. tostring(err))
       return 0, #list
     end
   end
@@ -130,9 +130,9 @@ function M.apply(changes)
     total, skipped = total + a, skipped + s
   end
   if skipped > 0 then
-    U.warn(("%d değişiklik uygulandı, %d satır atlandı (önizlemeden sonra değişmiş)."):format(total, skipped))
+    U.warn(("%d changes applied, %d lines skipped (changed after the preview)."):format(total, skipped))
   else
-    U.info(("%d değişiklik %d dosyaya uygulandı. Açık buffer'larda u ile geri alınabilir."):format(total, #order))
+    U.info(("%d changes applied to %d files. In open buffers you can undo with u."):format(total, #order))
   end
 end
 
@@ -145,13 +145,13 @@ local function render(st)
       on = on + 1
     end
   end
-  lines[1] = ("Değiştir: %s  →  %s"):format(st.q.pattern, st.q.replacement)
-  lines[2] = ("Kapsam: %s · %s · .gitignore'a uyulur, gizli dosyalar hariç%s"):format(
+  lines[1] = ("Replace: %s  →  %s"):format(st.q.pattern, st.q.replacement)
+  lines[2] = ("Scope: %s · %s · respects .gitignore, hidden files excluded%s"):format(
     vim.fn.fnamemodify(st.root, ":~"),
-    st.q.regex and "regex (ripgrep sözdizimi)" or "düz metin",
+    st.q.regex and "regex (ripgrep syntax)" or "plain text",
     st.q.glob and st.q.glob ~= "" and (" · glob: " .. st.q.glob) or ""
   )
-  lines[3] = ("%d / %d değişiklik seçili   ·   a: uygula   x: satırı aç/kapat   X: dosyayı aç/kapat   Enter: dosyaya git   q: iptal"):format(on, #st.changes)
+  lines[3] = ("%d / %d changes selected   ·   a: apply   x: toggle line   X: toggle file   Enter: go to file   q: cancel"):format(on, #st.changes)
   lines[4] = ""
   local hls = { { 0, "NoctisAccent" }, { 1, "NoctisMuted" }, { 2, "NoctisDim" } }
   local last
@@ -188,15 +188,15 @@ function M.preview(q)
   local r = require("noctis.project").root()
   local changes, err = M.collect(q, r)
   if not changes then
-    U.error("Arama başarısız: " .. tostring(err))
+    U.error("Search failed: " .. tostring(err))
     return
   end
   if #changes == 0 then
-    U.info("Eşleşme bulunamadı.")
+    U.info("No matches found.")
     return
   end
   if #changes > M.MAX then
-    U.warn(("%d eşleşme var; güvenlik için en fazla %d değişiklik önizlenir. Aramayı daraltın (glob)."):format(#changes, M.MAX))
+    U.warn(("%d matches; for safety at most %d changes are previewed. Narrow the search (glob)."):format(#changes, M.MAX))
     return
   end
   vim.cmd("tabnew")
@@ -205,7 +205,7 @@ function M.preview(q)
   vim.bo[buf].bufhidden = "wipe"
   vim.bo[buf].swapfile = false
   vim.bo[buf].filetype = "noctis-replace"
-  pcall(api.nvim_buf_set_name, buf, "noctis://değiştir-önizleme")
+  pcall(api.nvim_buf_set_name, buf, "noctis://replace-preview")
   vim.wo.number = false
   vim.wo.signcolumn = "no"
   vim.wo.wrap = false
@@ -226,7 +226,7 @@ function M.preview(q)
       render(st)
       pcall(api.nvim_win_set_cursor, 0, pos)
     end
-  end, "Satırı hariç tut/dahil et")
+  end, "Exclude/include line")
   map("X", function()
     local m = cur_meta()
     local file = m and (m.file or (m.idx and st.changes[m.idx].rel))
@@ -246,7 +246,7 @@ function M.preview(q)
       render(st)
       pcall(api.nvim_win_set_cursor, 0, pos)
     end
-  end, "Dosyayı hariç tut/dahil et")
+  end, "Exclude/include file")
   map("<CR>", function()
     local m = cur_meta()
     if m and m.idx then
@@ -255,7 +255,7 @@ function M.preview(q)
       vim.cmd("edit " .. vim.fn.fnameescape(c.path))
       pcall(api.nvim_win_set_cursor, 0, { c.lnum, 0 })
     end
-  end, "Dosyaya git")
+  end, "Go to file")
   map("a", function()
     local n, files = 0, {}
     for _, c in ipairs(st.changes) do
@@ -265,34 +265,34 @@ function M.preview(q)
       end
     end
     if n == 0 then
-      U.info("Seçili değişiklik yok.")
+      U.info("No changes selected.")
       return
     end
-    local msg = ("%d değişiklik %d dosyaya uygulanacak. Devam?"):format(n, vim.tbl_count(files))
-    if vim.fn.confirm(msg, "&Uygula\n&Vazgeç", 2) == 1 then
+    local msg = ("Apply %d changes to %d files. Continue?"):format(n, vim.tbl_count(files))
+    if vim.fn.confirm(msg, "&Apply\n&Cancel", 2) == 1 then
       M.apply(st.changes)
       vim.cmd("tabclose")
     end
   end, "Uygula")
   map("q", function()
     vim.cmd("tabclose")
-  end, "İptal")
+  end, "Cancel")
 end
 
 function M.open()
-  vim.ui.input({ prompt = "Ara: ", default = vim.fn.expand("<cword>") }, function(pattern)
+  vim.ui.input({ prompt = "Search: ", default = vim.fn.expand("<cword>") }, function(pattern)
     if not pattern or pattern == "" then
       return
     end
-    vim.ui.input({ prompt = ("'%s' yerine: "):format(pattern) }, function(replacement)
+    vim.ui.input({ prompt = ("Replace '%s' with: "):format(pattern) }, function(replacement)
       if replacement == nil then
         return
       end
-      vim.ui.select({ "Düz metin", "Regex (ripgrep sözdizimi, $1 grupları)" }, { prompt = "Eşleştirme" }, function(_, idx)
+      vim.ui.select({ "Plain text", "Regex (ripgrep syntax, $1 groups)" }, { prompt = "Matching" }, function(_, idx)
         if not idx then
           return
         end
-        vim.ui.input({ prompt = "Dosya filtresi (glob, boş = tüm proje): " }, function(glob)
+        vim.ui.input({ prompt = "File filter (glob, empty = whole project): " }, function(glob)
           if glob == nil then
             return
           end

@@ -1,25 +1,25 @@
--- NOCTIS kullanıcı ayarları
--- Konum: ~/.config/noctis/config.lua  (XDG_CONFIG_HOME'a uyar)
--- Güncellemeler bu dosyaya dokunmaz. Değişiklikler NOCTIS yeniden başlatılınca
--- uygulanır. Geçersiz değerler açılışta açıklamalı olarak raporlanır ve yerine
--- varsayılan kullanılır. Tüm alanlar isteğe bağlıdır.
+-- NOCTIS user settings
+-- Location: ~/.config/noctis/config.lua  (respects XDG_CONFIG_HOME)
+-- Updates never touch this file. Changes apply after NOCTIS restarts.
+-- Invalid values are reported with an explanation at startup and replaced by
+-- the default. Every field is optional.
 return {
-  -- Tema: "midnight-violet" | "glacier" | "amber"  (Space u t ile de seçilir)
+  -- Theme: "midnight-violet" | "glacier" | "amber"  (also Space u t)
   -- theme = "midnight-violet",
 
-  -- Editör zemini terminalden gelsin (şeffaflık terminalinizin özelliğidir)
+  -- Let the terminal provide the editor background (transparency is a terminal feature)
   -- transparent = false,
 
-  -- Nerd Font ikonları. Font yoksa false yapın; arayüz eksiksiz çalışır.
+  -- Nerd Font icons. Set to false without such a font; the interface still works fully.
   -- icons = true,
 
-  -- Kenarlıklar: "rounded" | "single" | "ascii"
+  -- Borders: "rounded" | "single" | "ascii"
   -- borders = "rounded",
 
-  -- Renk: "auto" (terminali sorgula) | true (24 bit) | false (256 renk yedeği)
+  -- Color: "auto" (query the terminal) | true (24-bit) | false (256-color fallback)
   -- truecolor = "auto",
 
-  -- İlk açılış rehberi
+  -- First-launch tour
   -- welcome = true,
 
   ui = {
@@ -28,7 +28,7 @@ return {
     -- cursorline = true,
     -- explorer_width = 30, -- 16..80
     -- wrap = false,
-    -- typing_animation = true, -- yazılan karakter kısa süre parlar (Space u a)
+    -- typing_animation = true, -- typed characters glow briefly (Space u a)
   },
 
   diagnostics = {
@@ -37,51 +37,51 @@ return {
     -- underline = true,
   },
 
-  -- Kaydederken biçimlendirme (varsayılan kapalı). Yalnız belirli türler için:
+  -- Format on save (off by default). Only for specific filetypes:
   format_on_save = {
     -- enabled = true,
-    -- filetypes = { "python", "lua" }, -- boşsa tüm türler
+    -- filetypes = { "python", "lua" }, -- empty = all filetypes
     -- timeout_ms = 1500,
   },
 
-  -- Etkin dil paketleri. Bileşenler kendiliğinden indirilmez (:NoctisLang)
+  -- Enabled language packs. Components are never downloaded on their own (:NoctisLang)
   -- languages = { "python", "javascript", "html", "json", "lua", "bash" },
 
-  -- Büyük dosya modu eşiği
+  -- Big file mode threshold
   -- bigfile = { size = 2 * 1024 * 1024, lines = 50000 },
 
-  -- Pano: "auto" | "system" | "internal"
+  -- Clipboard: "auto" | "system" | "internal"
   -- clipboard = "auto",
 
-  -- Çıkışta proje düzenini kaydet (geri yükleme her zaman açık komutla: Space q r)
+  -- Save the project layout on quit (restoring is always an explicit command: Space q r)
   -- session = { autosave = true },
 
-  -- Kısayol değiştirme/kapatma: komut kimliği → tuş veya false.
-  -- Kimlikler: :NoctisKeys  veya docs/KEYMAPS.md
+  -- Change/disable keys: command id → key or false.
+  -- Ids: :NoctisKeys  or docs/KEYMAPS.md
   keymaps = {
     -- ["files.grep"] = "<leader>/",
     -- ["ui.focus"] = false,
   },
 
-  -- Görevler (Space t r). Komutlar argüman dizisi olarak verilir; dizi yerine
-  -- metin verilirse kabukta çalıştırılır. Hiçbiri kendiliğinden başlamaz.
+  -- Tasks (Space t r). Commands are argument lists; a string instead of a list
+  -- runs in the shell. None of them ever start on their own.
   tasks = {
-    -- { name = "Testler", cmd = { "pytest", "-q" } },
-    -- { name = "Sunucu", cmd = { "npm", "run", "dev" } },
+    -- { name = "Tests", cmd = { "pytest", "-q" } },
+    -- { name = "Server", cmd = { "npm", "run", "dev" } },
   },
 
   ai = {
-    -- Profiller: yerleşikleri (claude, codex, kimi) genişletin veya ekleyin.
-    -- cmd her zaman argüman dizisidir; kabuk metnine birleştirilmez.
+    -- Profiles: extend the built-ins (claude, codex, kimi) or add your own.
+    -- cmd is always an argument list; it's never joined into shell text.
     profiles = {
-      -- claude = { cmd = { "/opt/claude/bin/claude" } },          -- farklı konum
-      -- codex = false,                                            -- listeden kaldır
+      -- claude = { cmd = { "/opt/claude/bin/claude" } },          -- different location
+      -- codex = false,                                            -- remove from the list
       -- aider = { label = "Aider", cmd = { "aider", "--no-auto-commits" } },
-      -- ozel = { label = "Kendi aracım", cmd = { "benim-aracim" }, env = { MY_MODE = "1" } },
+      -- custom = { label = "My tool", cmd = { "my-tool" }, env = { MY_MODE = "1" } },
     },
     -- layout = "auto", -- "auto" | "right" | "bottom" | "full"
-    -- width = 0.42,    -- sağ panel oranı
-    -- height = 0.40,   -- alt panel oranı
+    -- width = 0.42,    -- right panel ratio
+    -- height = 0.40,   -- bottom panel ratio
     baseline = {
       -- max_files = 5000,
       -- max_file_size = 1024 * 1024,
@@ -91,7 +91,7 @@ return {
     },
     watch = {
       -- debounce_ms = 250,
-      -- reconcile_ms = 4000, -- en kısa aralık; yavaş taramada otomatik uzar (≤60 sn)
+      -- reconcile_ms = 4000, -- shortest interval; grows automatically on slow scans (≤60 s)
       -- max_dirs = 4000,
     },
     -- retention_days = 14,

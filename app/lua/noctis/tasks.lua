@@ -1,7 +1,7 @@
--- Görevler: run/test/build komutları kullanıcı seçtiğinde çalışır.
--- Proje açılışında hiçbir görev kendiliğinden başlamaz. Projeye ait görev
--- dosyası (.noctis/tasks.json) yalnız Neovim'in güven onayı (vim.secure)
--- verildiyse okunur. Komutlar shell metnine birleştirilmeden argv olarak verilir.
+-- Tasks: run/test/build commands run when the user picks them.
+-- No task ever starts on its own when a project opens. The project's task
+-- file (.noctis/tasks.json) is read only if Neovim's trust prompt (vim.secure)
+-- was accepted. Commands are passed as argv, never joined into shell text.
 local M = {}
 
 local U = require("noctis.util")
@@ -40,7 +40,7 @@ local function detect(r)
       out[#out + 1] = { name = name, cmd = { runner, "run", name }, source = runner }
     end
   end
-  -- Makefile hedefleri (basit tarama; kural gövdeleri çalıştırılmaz)
+  -- Makefile targets (a simple scan; rule bodies are never executed)
   local mk = U.read_file(r .. "/Makefile") or U.read_file(r .. "/makefile")
   if mk then
     local seen = {}
@@ -72,7 +72,7 @@ local function detect(r)
   return out
 end
 
---- Proje görev dosyası: yalnız kullanıcı güvenirse
+--- Project task file: only if the user trusts it
 local function project_tasks(r)
   local path = r .. "/.noctis/tasks.json"
   if not vim.uv.fs_stat(path) then
@@ -80,12 +80,12 @@ local function project_tasks(r)
   end
   local ok, content = pcall(vim.secure.read, path)
   if not ok or not content then
-    U.info("Proje görev dosyası güvenilir olarak işaretlenmedi; atlandı (.noctis/tasks.json).")
+    U.info("The project task file isn't marked as trusted; skipped (.noctis/tasks.json).")
     return {}
   end
   local dok, data = pcall(vim.json.decode, content)
   if not dok or type(data) ~= "table" then
-    U.warn(".noctis/tasks.json okunamadı (geçersiz JSON).")
+    U.warn(".noctis/tasks.json could not be read (invalid JSON).")
     return {}
   end
   local out = {}
@@ -117,13 +117,13 @@ end
 local function winbar(run)
   local status
   if run.code == nil then
-    status = "%#NoctisAIStatusRun# çalışıyor "
+    status = "%#NoctisAIStatusRun# running "
   elseif run.code == 0 then
-    status = ("%%#NoctisSuccess# ✓ çıkış 0 · %.1f sn "):format((run.ended - run.started) / 1e9)
+    status = ("%%#NoctisSuccess# ✓ exit 0 · %.1f s "):format((run.ended - run.started) / 1e9)
   else
-    status = ("%%#NoctisError# ✗ çıkış %d · %.1f sn "):format(run.code, (run.ended - run.started) / 1e9)
+    status = ("%%#NoctisError# ✗ exit %d · %.1f s "):format(run.code, (run.ended - run.started) / 1e9)
   end
-  return ("%%#NoctisAccent# görev %%#NoctisBold#%s %%#NoctisMuted#%s %s%%=%%#NoctisDim# Space t x: iptal · Ctrl-\\ e: editöre dön "):format(
+  return ("%%#NoctisAccent# task %%#NoctisBold#%s %%#NoctisMuted#%s %s%%=%%#NoctisDim# Space t x: cancel · Ctrl-\\ e: back to editor "):format(
     run.task.name,
     cmd_text(run.task.cmd):gsub("%%", "%%%%"),
     status
@@ -134,16 +134,16 @@ end
 function M.run(task)
   local cmd = task.cmd
   if type(cmd) == "string" then
-    cmd = { vim.o.shell, vim.o.shellcmdflag, cmd } -- kullanıcı tanımlı shell metni
+    cmd = { vim.o.shell, vim.o.shellcmdflag, cmd } -- user-defined shell text
   end
   if vim.fn.executable(cmd[1]) ~= 1 then
-    U.error(("`%s` bulunamadı; görev başlatılamadı."):format(cmd[1]))
+    U.error(("`%s` not found; the task was not started."):format(cmd[1]))
     return
   end
   local buf = api.nvim_create_buf(false, true)
   vim.bo[buf].bufhidden = "hide"
   local term = require("noctis.terminal")
-  -- Görev çıktısı terminal panelinde gösterilir
+  -- Task output is shown in the terminal panel
   if term.is_visible() then
     api.nvim_win_set_buf(term.win, buf)
     api.nvim_set_current_win(term.win)
@@ -154,7 +154,7 @@ function M.run(task)
     vim.wo[term.win].winhighlight = "Normal:NoctisPanel,NormalNC:NoctisPanel,WinBar:NoctisPanel,WinBarNC:NoctisPanel"
   end
   local run = { task = task, buf = buf, started = vim.uv.hrtime() }
-  vim.b[buf].noctis_label = "görev: " .. task.name
+  vim.b[buf].noctis_label = "task: " .. task.name
   vim.b[buf].noctis_panel = true
   local job = vim.fn.jobstart(cmd, {
     term = true,
@@ -168,15 +168,15 @@ function M.run(task)
           vim.wo[w].winbar = winbar(run)
         end
         if code == 0 then
-          U.info(("Görev tamamlandı: %s (çıkış 0)"):format(task.name))
+          U.info(("Task finished: %s (exit 0)"):format(task.name))
         else
-          U.warn(("Görev başarısız: %s (çıkış %d)"):format(task.name, code))
+          U.warn(("Task failed: %s (exit %d)"):format(task.name, code))
         end
       end)
     end,
   })
   if job <= 0 then
-    U.error("Görev başlatılamadı: " .. cmd_text(task.cmd))
+    U.error("Could not start the task: " .. cmd_text(task.cmd))
     return
   end
   run.job = job
@@ -188,11 +188,11 @@ end
 function M.pick()
   local tasks = M.list()
   if #tasks == 0 then
-    U.info("Bu projede görev bulunamadı. config.lua › tasks veya .noctis/tasks.json ile ekleyin.")
+    U.info("No tasks found in this project. Add them via config.lua › tasks or .noctis/tasks.json.")
     return
   end
   vim.ui.select(tasks, {
-    prompt = "Görev çalıştır (" .. vim.fn.fnamemodify(root(), ":~") .. ")",
+    prompt = "Run a task (" .. vim.fn.fnamemodify(root(), ":~") .. ")",
     format_item = function(t)
       return ("%-14s %-22s %s"):format(t.source, t.name, cmd_text(t.cmd))
     end,
@@ -218,21 +218,21 @@ function M.stop()
     return r.code == nil
   end, M.runs)
   if #live == 0 then
-    U.info("Çalışan görev yok.")
+    U.info("No task is running.")
     return
   end
   local function kill(r)
     vim.fn.jobstop(r.job)
-    U.info("Görev durduruldu: " .. r.task.name)
+    U.info("Task stopped: " .. r.task.name)
   end
   if #live == 1 then
-    if vim.fn.confirm(("`%s` durdurulsun mu?"):format(live[1].task.name), "&Evet\n&Hayır", 2) == 1 then
+    if vim.fn.confirm(("Stop `%s`?"):format(live[1].task.name), "&Yes\n&No", 2) == 1 then
       kill(live[1])
     end
     return
   end
   vim.ui.select(live, {
-    prompt = "Durdurulacak görev",
+    prompt = "Task to stop",
     format_item = function(r)
       return r.task.name .. "  " .. cmd_text(r.task.cmd)
     end,

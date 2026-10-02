@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# NOCTIS kurulum scripti — kullanıcı alanında, root gerektirmez, tekrar
-# çalıştırılabilir. Sistem paketi kurmaz; eksikleri ve kurulum yollarını
-# gösterir. Kullanıcı ayarları (config.lua), oturumlar ve AI kayıtları korunur.
+# NOCTIS install script — runs in user space, needs no root, can be run
+# again. It never installs system packages; it shows what's missing and how
+# to install it. User settings (config.lua), sessions and AI records are kept.
 set -euo pipefail
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -22,17 +22,17 @@ MARKER="# NOCTIS-LAUNCHER"
 SETUP=1; FORCE=0; YES=0
 usage() {
   cat <<EOF
-$NAME $VERSION kurulumu
+$NAME $VERSION installer
 
-Kullanım: scripts/install.sh [--no-setup] [--force] [--yes] [--bin-dir DİZİN]
+Usage: scripts/install.sh [--no-setup] [--force] [--yes] [--bin-dir DIR]
 
-  --no-setup   Eklentileri şimdi indirme (sonra: $COMMAND --setup)
-  --force      Hedefte NOCTIS'e ait olmayan bir '$COMMAND' varsa üzerine yaz
-  --yes        Onay sorma
-  --bin-dir    Başlatıcı dizini (varsayılan: ~/.local/bin)
+  --no-setup   Don't download plugins now (later: $COMMAND --setup)
+  --force      Overwrite a '$COMMAND' at the target that doesn't belong to NOCTIS
+  --yes        Don't ask for confirmation
+  --bin-dir    Launcher directory (default: ~/.local/bin)
 
-Kurulan:   $APP_DIR (uygulama), $LAUNCHER (başlatıcı)
-Dokunulmaz: $CONFIG_HOME/$APPNAME (ayarlarınız), $STATE_HOME/$APPNAME (oturumlar, AI kayıtları)
+Installed:   $APP_DIR (app), $LAUNCHER (launcher)
+Untouched:   $CONFIG_HOME/$APPNAME (your settings), $STATE_HOME/$APPNAME (sessions, AI records)
 EOF
 }
 
@@ -43,7 +43,7 @@ while [ $# -gt 0 ]; do
     --yes|-y) YES=1 ;;
     --bin-dir) BIN_DIR="$2"; LAUNCHER="$BIN_DIR/$COMMAND"; shift ;;
     -h|--help) usage; exit 0 ;;
-    *) echo "Bilinmeyen seçenek: $1" >&2; usage; exit 2 ;;
+    *) echo "Unknown option: $1" >&2; usage; exit 2 ;;
   esac
   shift
 done
@@ -55,9 +55,9 @@ fail() { printf '  \033[31m✗\033[0m %s\n' "$*"; }
 
 confirm() {
   [ "$YES" -eq 1 ] && return 0
-  printf '%s [e/H] ' "$1"
+  printf '%s [y/N] ' "$1"
   read -r ans || return 1
-  case "$ans" in e|E|evet|y|Y|yes) return 0 ;; *) return 1 ;; esac
+  case "$ans" in y|Y|yes|YES) return 0 ;; *) return 1 ;; esac
 }
 
 version_ge() {
@@ -78,62 +78,62 @@ os_hint() {
       if command -v apt-get >/dev/null 2>&1; then echo "Debian/Ubuntu: sudo apt install $1"
       elif command -v dnf >/dev/null 2>&1; then echo "Fedora: sudo dnf install $1"
       elif command -v pacman >/dev/null 2>&1; then echo "Arch: sudo pacman -S $1"
-      else echo "dağıtımınızın paket yöneticisiyle '$1' kurun"; fi ;;
+      else echo "install '$1' with your distribution's package manager"; fi ;;
     Darwin) echo "macOS: brew install $1" ;;
-    *) echo "'$1' kurun" ;;
+    *) echo "install '$1'" ;;
   esac
 }
 
-say "$NAME $VERSION kurulumu"
+say "$NAME $VERSION installer"
 say ""
-say "Ön koşullar:"
+say "Prerequisites:"
 missing=0
 NVIM_BIN="${NOCTIS_NVIM:-$(command -v nvim 2>/dev/null || true)}"
 if [ -n "$NVIM_BIN" ]; then
-  # NVIM_APPNAME: kullanıcının normal Neovim dizinlerine dokunulmasın
+  # NVIM_APPNAME: don't touch the user's regular Neovim directories
   nv="$(NVIM_APPNAME="$APPNAME" "$NVIM_BIN" --version | head -n1 | sed -E 's/^NVIM v([0-9.]+).*/\1/')"
   if version_ge "$nv" "$MIN_NVIM"; then ok "Neovim $nv ($NVIM_BIN)"; else fail "Neovim $nv < $MIN_NVIM"; missing=1; fi
 else
-  fail "Neovim bulunamadı (>= $MIN_NVIM gerekli)"
-  say "      → https://github.com/neovim/neovim/releases (dağıtım paketleri çoğunlukla eskidir)"
+  fail "Neovim not found (>= $MIN_NVIM required)"
+  say "      → https://github.com/neovim/neovim/releases (distro packages are often old)"
   missing=1
 fi
-if command -v git >/dev/null 2>&1; then ok "git"; else fail "git bulunamadı → $(os_hint git)"; missing=1; fi
-if command -v rg >/dev/null 2>&1; then ok "ripgrep"; else warn "ripgrep yok: metin arama ve AI kapsam taraması sınırlı → $(os_hint ripgrep)"; fi
+if command -v git >/dev/null 2>&1; then ok "git"; else fail "git not found → $(os_hint git)"; missing=1; fi
+if command -v rg >/dev/null 2>&1; then ok "ripgrep"; else warn "no ripgrep: text search and the AI scope scan are limited → $(os_hint ripgrep)"; fi
 for opt in lazygit tree-sitter; do
-  if command -v "$opt" >/dev/null 2>&1; then ok "$opt (isteğe bağlı)"; else say "  · $opt yok (isteğe bağlı)"; fi
+  if command -v "$opt" >/dev/null 2>&1; then ok "$opt (optional)"; else say "  · no $opt (optional)"; fi
 done
 if [ "$missing" -ne 0 ]; then
   say ""
-  say "Gerekli bileşenler eksik; kurulum yapılmadı. Sistem paketleri bu script tarafından kurulmaz."
+  say "Required components are missing; nothing was installed. This script doesn't install system packages."
   exit 1
 fi
 
 say ""
-say "Hedefler:"
-say "  uygulama   $APP_DIR"
-say "  başlatıcı  $LAUNCHER"
+say "Targets:"
+say "  app        $APP_DIR"
+say "  launcher   $LAUNCHER"
 
-# Çakışma kontrolleri: NOCTIS'e ait olmayan dosyaların üzerine sessizce yazma
+# Conflict checks: never silently overwrite files that don't belong to NOCTIS
 if [ -e "$LAUNCHER" ] && ! grep -q "$MARKER" "$LAUNCHER" 2>/dev/null; then
   if [ "$FORCE" -ne 1 ]; then
-    fail "$LAUNCHER zaten var ve NOCTIS başlatıcısı değil. Üzerine yazmak için --force, farklı yer için --bin-dir."
+    fail "$LAUNCHER already exists and isn't a NOCTIS launcher. Use --force to overwrite, or --bin-dir for another location."
     exit 1
   fi
-  warn "$LAUNCHER NOCTIS'e ait değil; --force ile değiştirilecek (yedek: $LAUNCHER.bak)"
+  warn "$LAUNCHER doesn't belong to NOCTIS; it will be replaced because of --force (backup: $LAUNCHER.bak)"
   cp -p "$LAUNCHER" "$LAUNCHER.bak"
 fi
 if [ -d "$APP_DIR" ] && [ ! -f "$APP_DIR/BRAND" ]; then
-  fail "$APP_DIR var ama NOCTIS uygulama dizini değil; dokunulmadı."
+  fail "$APP_DIR exists but isn't a NOCTIS app directory; left untouched."
   exit 1
 fi
 
 if [ -d "$APP_DIR" ]; then
-  say "  (mevcut kurulum güncellenecek; ayarlarınız ve oturum verileri korunur)"
+  say "  (the existing installation will be updated; your settings and session data are kept)"
 fi
-confirm "Devam edilsin mi?" || { say "İptal edildi."; exit 1; }
+confirm "Continue?" || { say "Cancelled."; exit 1; }
 
-# Uygulama dosyalarını atomik olarak değiştir
+# Replace the app files atomically
 mkdir -p "$(dirname "$APP_DIR")" "$BIN_DIR"
 STAGE="$APP_DIR.new.$$"
 rm -rf "$STAGE"
@@ -145,38 +145,38 @@ if [ -d "$APP_DIR" ]; then
 else
   mv "$STAGE" "$APP_DIR"
 fi
-ok "uygulama dosyaları kopyalandı"
+ok "app files copied"
 
-# Başlatıcı: uygulama yolunu sabitle
+# Launcher: pin the app path
 TMP_LAUNCHER="$LAUNCHER.tmp.$$"
 {
   sed -n '1p' "$REPO/bin/noctis"
-  echo "$MARKER (scripts/install.sh tarafından oluşturuldu; kaldırma: scripts/uninstall.sh)"
+  echo "$MARKER (created by scripts/install.sh; remove with: scripts/uninstall.sh)"
   printf ': "${NOCTIS_HOME:=%s}"\n' "$APP_DIR"
   sed -n '2,$p' "$REPO/bin/noctis"
 } > "$TMP_LAUNCHER"
 chmod 0755 "$TMP_LAUNCHER"
 mv "$TMP_LAUNCHER" "$LAUNCHER"
-ok "başlatıcı kuruldu: $LAUNCHER"
+ok "launcher installed: $LAUNCHER"
 
 case ":$PATH:" in
   *":$BIN_DIR:"*) ;;
-  *) warn "$BIN_DIR PATH'te değil. Kabuk yapılandırmanıza ekleyin: export PATH=\"$BIN_DIR:\$PATH\"" ;;
+  *) warn "$BIN_DIR is not in PATH. Add it to your shell config: export PATH=\"$BIN_DIR:\$PATH\"" ;;
 esac
 
 if [ "$SETUP" -eq 1 ]; then
   say ""
-  say "Eklentiler indirilecek (kilit dosyasındaki sürümler, GitHub'dan, ağ gerekir):"
+  say "Plugins to download (lockfile versions, from GitHub, needs network):"
   grep -oE '"[^"]+": \{ "branch": "[^"]+", "commit": "[0-9a-f]{7}' "$APP_DIR/lazy-lock.json" \
     | sed -E 's/"([^"]+)": \{ "branch": "([^"]+)", "commit": "(.*)/  • \1 \3 (\2)/'
-  say "Dil sunucuları/formatter/parser indirilmez; NOCTIS içinde :NoctisLang ile seçerek kurulur."
-  if confirm "Şimdi indirilsin mi?"; then
+  say "Language servers/formatters/parsers are not downloaded; pick and install them inside NOCTIS with :NoctisLang."
+  if confirm "Download now?"; then
     "$LAUNCHER" --setup
   else
-    say "Atlandı. Daha sonra: $COMMAND --setup"
+    say "Skipped. Later: $COMMAND --setup"
   fi
 fi
 
 say ""
-say "Hazır. Başlatmak için: $COMMAND   ·   denetim: $COMMAND --doctor"
-say "Ayarlar: $CONFIG_HOME/$APPNAME/config.lua (örnek: $APP_DIR/examples/config.lua)"
+say "Ready. Start with: $COMMAND   ·   check: $COMMAND --doctor"
+say "Settings: $CONFIG_HOME/$APPNAME/config.lua (example: $APP_DIR/examples/config.lua)"

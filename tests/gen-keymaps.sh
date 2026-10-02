@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# docs/KEYMAPS.md dosyasını komut kaydından üretir (tek kaynak).
+# Generates docs/KEYMAPS.md from the command registry (single source of truth).
 set -euo pipefail
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 TMP="$(mktemp -d)"
@@ -10,4 +10,4 @@ mkdir -p "$REPO/docs"
 nvim --headless -u "$REPO/app/init.lua" \
   -c "lua local f = io.open('$REPO/docs/KEYMAPS.md', 'w'); f:write(require('noctis.registry').markdown() .. '\n'); f:close()" \
   -c "qa!"
-echo "docs/KEYMAPS.md güncellendi"
+echo "docs/KEYMAPS.md updated"

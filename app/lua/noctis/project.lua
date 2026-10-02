@@ -1,6 +1,6 @@
--- Aktif proje kökü ve son projeler.
--- Kök: elle seçilmişse o; değilse Git kökü; o da yoksa çalışma klasörü.
--- Çalışma klasörü yalnız kullanıcı bir proje açtığında değiştirilir.
+-- Active project root and recent projects.
+-- Root: the manually chosen one if set; otherwise the Git root; otherwise the working directory.
+-- The working directory changes only when the user opens a project.
 local M = {}
 
 local U = require("noctis.util")
@@ -14,7 +14,7 @@ local function store()
   return U.state_dir() .. "/projects.json"
 end
 
----@param path? string dosya veya klasör
+---@param path? string file or folder
 ---@return string root, string kind "manual"|"git"|"cwd"
 function M.detect(path)
   if M.manual_root then
@@ -28,7 +28,7 @@ function M.detect(path)
   return U.norm(vim.fn.getcwd()), "cwd"
 end
 
---- Aktif proje kökü (önbellekli; cwd veya elle seçim değişince yenilenir)
+--- Active project root (cached; refreshed when cwd or the manual choice changes)
 function M.root()
   if not M._root then
     M._root, M._kind = M.detect()
@@ -48,7 +48,7 @@ function M.refresh()
   vim.api.nvim_exec_autocmds("User", { pattern = "NoctisRootChanged", modeline = false, data = { root = r } })
 end
 
---- Son projeler listesine ekle
+--- Add to the recent projects list
 function M.touch(root)
   if not root or root == "" or root == vim.env.HOME or root == "/" then
     return
@@ -74,17 +74,17 @@ function M.recent()
   return out
 end
 
---- Bir projeyi aç: çalışma klasörünü değiştir ve gezgini aç.
+--- Open a project: change the working directory and open the explorer.
 function M.open(path)
   path = U.norm(vim.fn.expand(path))
   if vim.fn.isdirectory(path) == 0 then
-    U.error("Klasör bulunamadı: " .. path)
+    U.error("Folder not found: " .. path)
     return
   end
   M.manual_root = nil
   vim.cmd("cd " .. vim.fn.fnameescape(path))
   M.refresh()
-  U.info("Proje: " .. vim.fn.fnamemodify(M.root(), ":~"))
+  U.info("Project: " .. vim.fn.fnamemodify(M.root(), ":~"))
   pcall(function()
     require("noctis.explorer").open()
   end)
@@ -93,11 +93,11 @@ end
 function M.pick_recent()
   local list = M.recent()
   if #list == 0 then
-    U.info("Henüz son proje yok. Bir klasör açın: Space p o")
+    U.info("No recent projects yet. Open a folder: Space p o")
     return
   end
   vim.ui.select(list, {
-    prompt = "Son projeler",
+    prompt = "Recent projects",
     format_item = function(p)
       return vim.fn.fnamemodify(p.path, ":~")
     end,
@@ -109,7 +109,7 @@ function M.pick_recent()
 end
 
 function M.open_prompt()
-  vim.ui.input({ prompt = "Proje klasörü: ", default = vim.fn.getcwd() .. "/", completion = "dir" }, function(input)
+  vim.ui.input({ prompt = "Project folder: ", default = vim.fn.getcwd() .. "/", completion = "dir" }, function(input)
     if input and vim.trim(input) ~= "" then
       M.open(vim.trim(input))
     end
@@ -117,18 +117,18 @@ function M.open_prompt()
 end
 
 function M.set_root_prompt()
-  vim.ui.input({ prompt = "Proje kökü: ", default = M.root() .. "/", completion = "dir" }, function(input)
+  vim.ui.input({ prompt = "Project root: ", default = M.root() .. "/", completion = "dir" }, function(input)
     if not input or vim.trim(input) == "" then
       return
     end
     local p = U.norm(vim.fn.expand(vim.trim(input)))
     if vim.fn.isdirectory(p) == 0 then
-      U.error("Klasör bulunamadı: " .. p)
+      U.error("Folder not found: " .. p)
       return
     end
     M.manual_root = p
     M.refresh()
-    U.info("Proje kökü elle ayarlandı: " .. vim.fn.fnamemodify(p, ":~"))
+    U.info("Project root set manually: " .. vim.fn.fnamemodify(p, ":~"))
   end)
 end
 
@@ -146,7 +146,7 @@ function M.setup()
     group = group,
     once = true,
     callback = function()
-      -- Dosya argümanıyla açıldıysa kök, dosyanın Git köküdür.
+      -- When opened with a file argument, the root is that file's Git root.
       local first = vim.fn.argv(0)
       if type(first) == "string" and first ~= "" and vim.fn.isdirectory(first) == 0 then
         local r = vim.fs.root(vim.fn.fnamemodify(first, ":p:h"), markers)

@@ -1,15 +1,15 @@
--- Değişiklik inceleme: liste, diff görünümleri, incelendi işareti, geri alma.
+-- Change review: the list, diff views, the reviewed mark, reverting.
 --
--- İki karşılaştırma ayrı etiketlenir:
---   * "İnceleme aralığı": başlangıç kaydından bu yana tespit edilen değişiklikler
---   * "Git": çalışma ağacının HEAD/index'e göre farkı (başlangıç öncesi düzenlemeler dahil)
+-- The two comparisons are labeled separately:
+--   * "Review interval": changes detected since the baseline
+--   * "Git": the working tree vs HEAD/index (edits made before the baseline included)
 --
--- Geri alma kuralları:
---   * Önceki içerik yoksa (kapsam dışı) geri alma yapılmaz ve bu açıkça söylenir.
---   * Disk içeriği incelenen sürümle aynı değilse işlem reddedilir.
---   * Dosyanın açık buffer'ında kaydedilmemiş düzenleme varsa işlem reddedilir.
---   * Yalnız seçilen hunk/dosya değişir; Git index'i ve diğer dosyalar korunur.
---   * Geri almadan önceki içerik kurtarma klasörüne kopyalanır.
+-- Revert rules:
+--   * Without previous content (out of scope) nothing is reverted, and that's said clearly.
+--   * If the disk content doesn't match the reviewed version, the operation is refused.
+--   * If the file's open buffer has unsaved edits, the operation is refused.
+--   * Only the chosen hunk/file changes; the Git index and other files are kept.
+--   * The content before the revert is copied to the recovery folder.
 local M = {}
 
 local U = require("noctis.util")
@@ -23,18 +23,18 @@ M.mode = "interval" ---@type "interval"|"git"
 M.root = nil ---@type string?
 
 local REASON = {
-  large = "büyük dosya — önceki içerik kaydedilmedi",
-  sensitive = "hassas dosya — içerik kaydedilmez",
-  limit = "kayıt sınırı aşıldı — önceki içerik yok",
-  excluded = "dışlanmış — önceki içerik yok",
-  symlink = "sembolik bağlantı — izlenmez",
-  unreadable = "okunamadı — önceki içerik yok",
+  large = "large file — previous content was not recorded",
+  sensitive = "sensitive file — content is never recorded",
+  limit = "baseline limit exceeded — no previous content",
+  excluded = "excluded — no previous content",
+  symlink = "symbolic link — not tracked",
+  unreadable = "unreadable — no previous content",
 }
 
 local KIND = {
-  added = { "A", "NoctisChangeAdded", "eklendi" },
-  modified = { "M", "NoctisChangeModified", "değişti" },
-  deleted = { "D", "NoctisChangeDeleted", "silindi" },
+  added = { "A", "NoctisChangeAdded", "added" },
+  modified = { "M", "NoctisChangeModified", "modified" },
+  deleted = { "D", "NoctisChangeDeleted", "deleted" },
 }
 
 local function tracker()
@@ -61,14 +61,14 @@ end
 
 local function describe(t, ch)
   if ch.no_baseline then
-    return REASON[ch.no_baseline] or ("önceki içerik yok (" .. ch.no_baseline .. ")"), "NoctisChangeOutOfScope"
+    return REASON[ch.no_baseline] or ("no previous content (" .. ch.no_baseline .. ")"), "NoctisChangeOutOfScope"
   end
   if ch.binary then
     local e = t.interval.files[ch.rel]
     return ("binary (%s → %s)"):format(e and U.human_size(e.size) or "—", ch.cur_size and U.human_size(ch.cur_size) or "—"), "NoctisMuted"
   end
   if ch.large then
-    return "büyük dosya — sınırlı önizleme", "NoctisMuted"
+    return "large file — limited preview", "NoctisMuted"
   end
   local parts = {}
   if (ch.adds or 0) > 0 then
@@ -80,7 +80,7 @@ local function describe(t, ch)
   return table.concat(parts, " "), "NoctisMuted"
 end
 
--- ── Liste ────────────────────────────────────────────────────────────────
+-- ── List ─────────────────────────────────────────────────────────────────
 
 function M.ensure_list_buf()
   if M.list_buf and api.nvim_buf_is_valid(M.list_buf) then
@@ -91,28 +91,28 @@ function M.ensure_list_buf()
   vim.bo[buf].filetype = "noctis-changes"
   vim.bo[buf].modifiable = false
   vim.b[buf].noctis_panel = true
-  vim.b[buf].noctis_label = "Değişiklikler"
-  pcall(api.nvim_buf_set_name, buf, "noctis://değişiklikler")
+  vim.b[buf].noctis_label = "Changes"
+  pcall(api.nvim_buf_set_name, buf, "noctis://changes")
   M.list_buf = buf
   local function map(lhs, fn, desc)
     vim.keymap.set("n", lhs, fn, { buffer = buf, nowait = true, silent = true, desc = desc })
   end
   map("<CR>", function()
     M.open_at_cursor()
-  end, "Diff'i aç")
+  end, "Open the diff")
   map("r", function()
     M.review_at_cursor()
-  end, "İncelendi işaretle/kaldır")
+  end, "Toggle reviewed")
   map("u", function()
     M.revert_at_cursor()
-  end, "Dosyayı başlangıca döndür")
+  end, "Revert the file to the baseline")
   map("o", function()
     M.edit_at_cursor()
-  end, "Dosyayı editörde aç")
+  end, "Open the file in the editor")
   map("g", function()
     M.mode = M.mode == "interval" and "git" or "interval"
     M.render()
-  end, "Git / aralık görünümü")
+  end, "Git / interval view")
   map("R", function()
     local t = tracker()
     if t then
@@ -121,10 +121,10 @@ function M.ensure_list_buf()
       end)
     end
     M.render()
-  end, "Yenile")
+  end, "Refresh")
   map("q", function()
     require("noctis.ai").hide()
-  end, "Paneli gizle")
+  end, "Hide the panel")
   return buf
 end
 
@@ -140,7 +140,7 @@ end
 local function git_lines(root)
   local top = require("noctis.git").toplevel(root)
   if not top then
-    return { "Bu klasör bir Git deposu değil; yalnız inceleme aralığı karşılaştırması kullanılabilir." }, {}
+    return { "This folder isn't a Git repository; only the review interval comparison is available." }, {}
   end
   local items = require("noctis.git").status_entries(top) or {}
   local numstat = {}
@@ -152,11 +152,11 @@ local function git_lines(root)
     end
   end
   local lines, meta = {}, {}
-  lines[#lines + 1] = ("Git değişiklikleri (HEAD'e göre) · %s"):format(vim.fn.fnamemodify(top, ":~"))
-  lines[#lines + 1] = "Başlangıçtan önce yapılmış düzenlemeler dahildir; bu görünüm AI aralığından bağımsızdır."
+  lines[#lines + 1] = ("Git changes (vs HEAD) · %s"):format(vim.fn.fnamemodify(top, ":~"))
+  lines[#lines + 1] = "Edits made before the baseline are included; this view is independent of the AI interval."
   lines[#lines + 1] = ""
   if #items == 0 then
-    lines[#lines + 1] = "  Çalışma ağacı temiz."
+    lines[#lines + 1] = "  The working tree is clean."
   end
   for _, it in ipairs(items) do
     local ns_ = numstat[it.path]
@@ -189,32 +189,32 @@ function M.render()
       add(l, i == 1 and "NoctisAccent" or (i == 2 and "NoctisDim" or nil), gm[i])
     end
     add("")
-    add("Enter: Git diff'i · g: inceleme aralığına dön · q: gizle", "NoctisDim")
+    add("Enter: Git diff · g: back to the review interval · q: hide", "NoctisDim")
   elseif not t then
-    add("İnceleme aralığı yok.", "NoctisAccent")
-    add("Bir AI oturumu başlatın (Space a n); başlangıç kaydı otomatik alınır.", "NoctisMuted")
+    add("No review interval.", "NoctisAccent")
+    add("Start an AI session (Space a n); the baseline is recorded automatically.", "NoctisMuted")
   else
     local iv = t.interval
     local win = vim.fn.bufwinid(buf)
     local width = win ~= -1 and api.nvim_win_get_width(win) or 100
-    local head = ("İnceleme aralığı · başlangıç %s · "):format(os.date("%d.%m %H:%M", iv.created_at))
+    local head = ("Review interval · baseline %s · "):format(os.date("%Y-%m-%d %H:%M", iv.created_at))
     add(head .. U.shorten_path(vim.fn.fnamemodify(t.root, ":~"), math.max(16, width - vim.fn.strdisplaywidth(head) - 1)), "NoctisAccent")
-    add("Bu aralıkta tespit edilen değişiklikler — hangi programın yazdığı doğrulanmaz.", "NoctisDim")
+    add("Changes detected in this interval — which program wrote them is not verified.", "NoctisDim")
     if iv.git and iv.git.head and iv.git.head ~= "" then
       local pre = #(iv.git.entries or {})
-      add(("Git: %s @ %s · başlangıçta %d dosya zaten değişmiş/izlenmiyordu (bunlar yeni değişiklik sayılmaz)"):format(iv.git.branch or "?", iv.git.head:sub(1, 7), pre), "NoctisDim")
+      add(("Git: %s @ %s · %d files were already modified/untracked at the baseline (they don't count as new changes)"):format(iv.git.branch or "?", iv.git.head:sub(1, 7), pre), "NoctisDim")
     end
     local running = require("noctis.ai.sessions").running(t.root)
     if #running > 1 then
-      add(("⚠ %d AI oturumu aynı çalışma ağacında çalışıyor: eşzamanlı yazma riski. Tek düzenleyen araç önerilir."):format(#running), "NoctisWarning")
+      add(("⚠ %d AI sessions are running in the same working tree: concurrent write risk. A single editing tool is recommended."):format(#running), "NoctisWarning")
     end
     if t.watcher.overflow then
-      add("⚠ İzleme sınırına ulaşıldı; bazı klasörler periyodik taramayla izleniyor (gecikmeli görünebilir).", "NoctisWarning")
+      add("⚠ Watch limit reached; some folders are tracked by periodic scans (may appear with a delay).", "NoctisWarning")
     end
     add("")
     local list = t:list()
     if #list == 0 then
-      add("  Henüz değişiklik yok. Bir program dosya yazdığında burada görünür.", "NoctisDim")
+      add("  No changes yet. They show up here when a program writes a file.", "NoctisDim")
     end
     local namew = 20
     for _, ch in ipairs(list) do
@@ -225,27 +225,27 @@ function M.render()
       local desc, dhl = describe(t, ch)
       local reviewed = t:is_reviewed(ch.rel)
       local name = U.shorten_path(ch.rel, namew)
-      local text = ("  %s  %s%s  %s%s"):format(k[1], name, string.rep(" ", namew - vim.fn.strdisplaywidth(name)), desc, reviewed and "   ✓ incelendi" or "")
+      local text = ("  %s  %s%s  %s%s"):format(k[1], name, string.rep(" ", namew - vim.fn.strdisplaywidth(name)), desc, reviewed and "   ✓ reviewed" or "")
       add(text, nil, { rel = ch.rel })
       local row = #lines - 1
       hls[#hls + 1] = { row, k[2], 2, 3 }
       local dstart = 2 + 1 + 2 + #name + (namew - vim.fn.strdisplaywidth(name)) + 2
       hls[#hls + 1] = { row, dhl, dstart, dstart + #desc }
       if reviewed then
-        hls[#hls + 1] = { row, "NoctisChangeReviewed", #text - #"✓ incelendi", #text }
+        hls[#hls + 1] = { row, "NoctisChangeReviewed", #text - #"✓ reviewed", #text }
       end
     end
     add("")
     local s = iv.stats or {}
     add(
-      ("Kapsam: %d dosyanın içeriği kayıtlı · %d dosya kapsam dışı%s · Space a i: ayrıntı"):format(
+      ("Scope: content of %d files recorded · %d files out of scope%s · Space a i: details"):format(
         s.captured or 0,
         s.skipped or 0,
-        s.limit_hit and (" · sınır: " .. s.limit_hit) or ""
+        s.limit_hit and (" · limit: " .. s.limit_hit) or ""
       ),
       "NoctisDim"
     )
-    add("Enter: diff · r: incelendi · u: dosyayı geri al · o: aç · g: Git görünümü · R: yenile · q: gizle", "NoctisDim")
+    add("Enter: diff · r: reviewed · u: revert file · o: open · g: Git view · R: refresh · q: hide", "NoctisDim")
   end
   vim.bo[buf].modifiable = true
   api.nvim_buf_set_lines(buf, 0, -1, false, lines)
@@ -265,9 +265,9 @@ function M.set_root(root)
   M.root = root
 end
 
--- ── Diff görünümleri ─────────────────────────────────────────────────────
+-- ── Diff views ───────────────────────────────────────────────────────────
 
---- Listelenmeyen, salt okunur geçici buffer (sekme çubuğunda görünmez)
+--- An unlisted, read-only temporary buffer (never shown in the tab bar)
 function M.scratch(lines, ft)
   local b = api.nvim_create_buf(false, true)
   api.nvim_buf_set_lines(b, 0, -1, false, lines)
@@ -294,13 +294,13 @@ local function guard(t, rel, viewed_hash)
   local abs = t:abs(rel)
   local buf = vim.fn.bufnr(abs)
   if buf > 0 and api.nvim_buf_is_loaded(buf) and vim.bo[buf].modified then
-    return false, "Bu dosyanın buffer'ında kaydedilmemiş düzenleme var. Önce kaydedin veya atın; geri alma körlemesine yapılmaz."
+    return false, "This file's buffer has unsaved edits. Save or discard them first; reverting is never done blindly."
   end
   local cur = U.read_file(abs)
   local cur_hash = cur and store.hash(cur) or "deleted"
   if viewed_hash and cur_hash ~= viewed_hash then
     t:mark(rel)
-    return false, "Dosya incelediğiniz sürümden sonra yeniden değişti. Farkı yeniden inceleyin; eski içerik körlemesine yazılmadı."
+    return false, "The file changed again after the version you reviewed. Review the diff again; the old content was not written blindly."
   end
   return true, nil, cur
 end
@@ -312,7 +312,7 @@ local function backup(t, rel, cur)
   local name = vim.fn.fnamemodify(rel, ":t")
   local path = ("%s/%s.%s.geri-alma-oncesi"):format(U.state_dir("recovered"), name, os.date("%Y%m%d-%H%M%S"))
   U.write_file(path, cur, 384)
-  U.log("INFO", "geri alma öncesi içerik saklandı: " .. path)
+  U.log("INFO", "kept the content before the revert: " .. path)
 end
 
 local function after_write(t, rel)
@@ -323,15 +323,15 @@ local function after_write(t, rel)
   t:mark(rel)
 end
 
---- Dosyayı başlangıç içeriğine döndür
+--- Revert a file to its baseline content
 function M.revert_file(t, rel, viewed_hash)
   local ch = t.changes[rel]
   if not ch then
-    U.info("Bu dosyada aralık değişikliği yok.")
+    U.info("This file has no interval changes.")
     return false
   end
   if ch.no_baseline then
-    U.warn(("Geri alınamaz: %s."):format(REASON[ch.no_baseline] or "önceki içerik yok"))
+    U.warn(("Can't revert: %s."):format(REASON[ch.no_baseline] or "no previous content"))
     return false
   end
   local ok, err, cur = guard(t, rel, viewed_hash)
@@ -341,12 +341,12 @@ function M.revert_file(t, rel, viewed_hash)
   end
   local abs = t:abs(rel)
   if ch.kind == "added" then
-    if vim.fn.confirm(("`%s` başlangıçta yoktu. Dosya NOCTIS çöp kutusuna taşınsın mı?"):format(rel), "&Evet\n&Hayır", 2) ~= 1 then
+    if vim.fn.confirm(("`%s` didn't exist at the baseline. Move it to the NOCTIS trash?"):format(rel), "&Yes\n&No", 2) ~= 1 then
       return false
     end
     local tok, terr = require("noctis.trash").move(abs)
     if not tok then
-      U.error("Taşınamadı: " .. tostring(terr))
+      U.error("Could not move it: " .. tostring(terr))
       return false
     end
     local buf = vim.fn.bufnr(abs)
@@ -354,36 +354,36 @@ function M.revert_file(t, rel, viewed_hash)
       require("noctis.buffers").delete(buf, { force = true })
     end
     t:mark(rel)
-    U.info("Eklenen dosya kaldırıldı (çöp kutusundan geri yüklenebilir): " .. rel)
+    U.info("Removed the added file (restorable from the trash): " .. rel)
     return true
   end
   local e = t.interval.files[rel]
   local data = store.get_blob(t.root, e.hash)
   if not data or store.hash(data) ~= e.hash then
-    U.error("Başlangıç içeriği okunamadı veya bozuk; geri alma yapılmadı.")
+    U.error("The baseline content is unreadable or corrupt; nothing was reverted.")
     return false
   end
-  local msg = ch.kind == "deleted" and ("`%s` başlangıç içeriğiyle yeniden oluşturulsun mu?"):format(rel)
-    or ("`%s` başlangıç içeriğine döndürülsün mü? Bu dosyadaki tüm aralık değişiklikleri geri alınır."):format(rel)
-  if vim.fn.confirm(msg, "&Geri al\n&Vazgeç", 2) ~= 1 then
+  local msg = ch.kind == "deleted" and ("Recreate `%s` with its baseline content?"):format(rel)
+    or ("Revert `%s` to its baseline content? Every interval change in this file is undone."):format(rel)
+  if vim.fn.confirm(msg, "&Revert\n&Cancel", 2) ~= 1 then
     return false
   end
   backup(t, rel, cur)
   local wok, werr = U.write_file(abs, data, e.mode or 420)
   if not wok then
-    U.error("Yazılamadı: " .. tostring(werr))
+    U.error("Could not write: " .. tostring(werr))
     return false
   end
   after_write(t, rel)
-  U.info("Başlangıç içeriğine döndürüldü: " .. rel)
+  U.info("Reverted to the baseline content: " .. rel)
   return true
 end
 
---- Yalnız bir hunk'ı geri al
+--- Revert a single hunk only
 function M.revert_hunk(t, rel, viewed_hash, h)
   local ch = t.changes[rel]
   if not ch or ch.kind ~= "modified" or ch.no_baseline or ch.binary then
-    U.warn("Hunk geri alma yalnız önceki içeriği kayıtlı, değiştirilmiş metin dosyalarında yapılabilir.")
+    U.warn("Hunk revert works only on modified text files whose previous content was recorded.")
     return false
   end
   local ok, err, cur = guard(t, rel, viewed_hash)
@@ -400,31 +400,31 @@ function M.revert_hunk(t, rel, viewed_hash, h)
   local st = vim.uv.fs_stat(t:abs(rel))
   local wok, werr = U.write_file(t:abs(rel), new, st and st.mode % 4096 or 420)
   if not wok then
-    U.error("Yazılamadı: " .. tostring(werr))
+    U.error("Could not write: " .. tostring(werr))
     return false
   end
   after_write(t, rel)
-  U.info(("Hunk geri alındı (%s, satır %d civarı). Diğer değişiklikler korunuyor."):format(rel, h[3]))
+  U.info(("Hunk reverted (%s, around line %d). The other changes are kept."):format(rel, h[3]))
   return true
 end
 
---- Birleşik diff (dar ekran veya tercih)
+--- Unified diff (narrow screens or preference)
 function M.unified(t, rel, win)
   local base, has = base_text(t, rel)
   local ch = t.changes[rel]
   if not has or not ch or ch.no_baseline then
-    U.warn(("`%s`: %s"):format(rel, ch and (REASON[ch.no_baseline] or "önceki içerik yok") or "değişiklik yok"))
+    U.warn(("`%s`: %s"):format(rel, ch and (REASON[ch.no_baseline] or "no previous content") or "no changes"))
     return
   end
   if ch.binary then
-    U.info(("`%s` binary dosya; metin diff'i gösterilemez (%s)."):format(rel, (describe(t, ch))))
+    U.info(("`%s` is a binary file; a text diff can't be shown (%s)."):format(rel, (describe(t, ch))))
     return
   end
   local cur = U.read_file(t:abs(rel)) or ""
   local viewed = ch.kind == "deleted" and "deleted" or store.hash(cur)
   local hk = hunks.diff(base or "", cur)
   if not hk then
-    U.warn("Dosya önizleme sınırını aşıyor; yan yana görünüm deneyin.")
+    U.warn("The file exceeds the preview limit; try the side-by-side view.")
     return
   end
   local buf = api.nvim_create_buf(false, true)
@@ -434,8 +434,8 @@ function M.unified(t, rel, win)
   local body, meta = hunks.unified(base or "", cur, hk, 3)
   local k = KIND[ch.kind]
   local header = {
-    ("%s  %s  ·  %s  ·  %d hunk%s"):format(k[1], rel, k[3], #hk, t:is_reviewed(rel) and "  ·  ✓ incelendi" or ""),
-    "]h/[h: hunk · X: hunk'ı geri al · U: dosyayı geri al · m: incelendi · o: dosyayı aç · q: listeye dön",
+    ("%s  %s  ·  %s  ·  %d hunk%s"):format(k[1], rel, k[3], #hk, t:is_reviewed(rel) and "  ·  ✓ reviewed" or ""),
+    "]h/[h: hunk · X: revert hunk · U: revert file · m: reviewed · o: open file · q: back to the list",
     "",
   }
   local lines = vim.list_extend(vim.deepcopy(header), body)
@@ -505,7 +505,7 @@ function M.unified(t, rel, win)
       pcall(api.nvim_win_set_cursor, 0, { math.max(1, line), 0 })
     end
   end)
-  -- İlk hunk'a git
+  -- Go to the first hunk
   for i = 1, #lines do
     if meta[i - off] and meta[i - off].kind == "hunk" then
       pcall(api.nvim_win_set_cursor, win, { i, 0 })
@@ -514,16 +514,16 @@ function M.unified(t, rel, win)
   end
 end
 
---- Yan yana diff (geniş ekran): sol başlangıç (salt okunur), sağ güncel dosya.
+--- Side-by-side diff (wide screens): left the baseline (read-only), right the current file.
 function M.side_by_side(t, rel)
   local base, has = base_text(t, rel)
   local ch = t.changes[rel]
   if not has or not ch or ch.no_baseline then
-    U.warn(("`%s`: %s"):format(rel, ch and (REASON[ch.no_baseline] or "önceki içerik yok") or "değişiklik yok"))
+    U.warn(("`%s`: %s"):format(rel, ch and (REASON[ch.no_baseline] or "no previous content") or "no changes"))
     return
   end
   if ch.binary then
-    U.info(("`%s` binary dosya; metin diff'i gösterilemez (%s)."):format(rel, (describe(t, ch))))
+    U.info(("`%s` is a binary file; a text diff can't be shown (%s)."):format(rel, (describe(t, ch))))
     return
   end
   local abs = t:abs(rel)
@@ -537,15 +537,15 @@ function M.side_by_side(t, rel)
   else
     right_buf = M.scratch({ "(dosya silindi)" }, "")
   end
-  -- Yeni pencereler geçerli pencerenin yerel seçeneklerini devralır; panelden
-  -- (Workbench) değil editör penceresinden açılsın.
+  -- New windows inherit the current window's local options; open from the
+  -- editor window, not from the panel (Workbench).
   require("noctis.ui.layout").focus_editor()
-  -- tabnew'un boş buffer'ı bırakmaması için doğrudan hedef buffer'la sekme aç
+  -- Open the tab directly with the target buffer so tabnew doesn't leave an empty buffer
   vim.cmd("tab sbuffer " .. right_buf)
   local right = api.nvim_get_current_win()
   vim.cmd("diffthis")
   local sb = M.scratch(to_lines(base), vim.filetype.match({ filename = abs }) or "")
-  pcall(api.nvim_buf_set_name, sb, "noctis://başlangıç/" .. rel)
+  pcall(api.nvim_buf_set_name, sb, "noctis://baseline/" .. rel)
   vim.cmd("leftabove vertical sbuffer " .. sb)
   local left = api.nvim_get_current_win()
   vim.cmd("diffthis")
@@ -559,14 +559,14 @@ function M.side_by_side(t, rel)
   vim.cmd("wincmd =")
   local bar = require("noctis.ui.bar")
   vim.wo[right].winbar = bar.build({
-    { text = " GÜNCEL DİSK ", hl = "NoctisAccent" },
+    { text = " CURRENT DISK ", hl = "NoctisAccent" },
     { text = " " .. rel, hl = "NoctisMuted" },
-    { text = "  ·  Space a h: hunk geri al · Space a m: incelendi", hl = "NoctisDim", drop = 2 },
+    { text = "  ·  Space a h: revert hunk · Space a m: reviewed", hl = "NoctisDim", drop = 2 },
   }, api.nvim_win_get_width(right))
   vim.wo[left].winbar = bar.build({
-    { text = " BAŞLANGIÇ ", hl = "NoctisWarning" },
-    { text = " " .. os.date("%H:%M", t.interval.created_at) .. " · salt okunur", hl = "NoctisMuted", drop = 3 },
-    { text = " · X: hunk geri al · U: dosya · m: incelendi · q: kapat", hl = "NoctisDim", drop = 2 },
+    { text = " BASELINE ", hl = "NoctisWarning" },
+    { text = " " .. os.date("%H:%M", t.interval.created_at) .. " · read-only", hl = "NoctisMuted", drop = 3 },
+    { text = " · X: revert hunk · U: file · m: reviewed · q: close", hl = "NoctisDim", drop = 2 },
   }, api.nvim_win_get_width(left))
   local function map(lhs, fn)
     vim.keymap.set("n", lhs, fn, { buffer = sb, nowait = true, silent = true })
@@ -587,7 +587,7 @@ function M.side_by_side(t, rel)
     if not hk or #hk == 0 then
       return
     end
-    -- Sol (başlangıç) satırını hunk'a eşle
+    -- Map the left (baseline) line to the hunk
     local line = api.nvim_win_get_cursor(left)[1]
     local pick
     for i, h in ipairs(hk) do
@@ -659,7 +659,7 @@ function M.edit_at_cursor()
   end
 end
 
--- ── Editördeki dosya için komutlar (Space a h / a U / a m) ───────────────
+-- ── Commands for the file in the editor (Space a h / a U / a m) ──────────
 
 local function current_change()
   local abs = api.nvim_buf_get_name(0)
@@ -677,17 +677,17 @@ end
 function M.current_revert_hunk()
   local t, rel = current_change()
   if not t then
-    U.info("Bu dosyada inceleme aralığı değişikliği yok.")
+    U.info("This file has no review interval changes.")
     return
   end
   if vim.bo.modified then
-    U.warn("Kaydedilmemiş düzenleme var; önce kaydedin veya atın.")
+    U.warn("There are unsaved edits; save or discard them first.")
     return
   end
   local cur = U.read_file(t:abs(rel)) or ""
   local base = base_text(t, rel)
   if not base then
-    U.warn("Önceki içerik yok; geri alma yapılamaz.")
+    U.warn("No previous content; can't revert.")
     return
   end
   local hk = hunks.diff(base, cur)
@@ -699,11 +699,11 @@ function M.current_revert_hunk()
     return
   end
   if dist and dist > 0 then
-    U.info("İmleç bir değişiklik üzerinde değil; en yakın hunk seçildi.")
+    U.info("The cursor isn't on a change; the nearest hunk was chosen.")
   end
   local h = hk[idx]
-  local msg = ("Satır %d civarındaki hunk (−%d +%d) başlangıç içeriğine döndürülsün mü?"):format(h[3], h[2], h[4])
-  if vim.fn.confirm(msg, "&Geri al\n&Vazgeç", 2) == 1 then
+  local msg = ("Revert the hunk around line %d (−%d +%d) to its baseline content?"):format(h[3], h[2], h[4])
+  if vim.fn.confirm(msg, "&Revert\n&Cancel", 2) == 1 then
     M.revert_hunk(t, rel, store.hash(cur), h)
   end
 end
@@ -711,7 +711,7 @@ end
 function M.current_revert_file()
   local t, rel = current_change()
   if not t then
-    U.info("Bu dosyada inceleme aralığı değişikliği yok.")
+    U.info("This file has no review interval changes.")
     return
   end
   local ch = t.changes[rel]
@@ -721,11 +721,11 @@ end
 function M.current_mark_reviewed()
   local t, rel = current_change()
   if not t then
-    U.info("Bu dosyada inceleme aralığı değişikliği yok.")
+    U.info("This file has no review interval changes.")
     return
   end
   t:mark_reviewed(rel)
-  U.info((t:is_reviewed(rel) and "İncelendi: " or "İncelendi işareti kaldırıldı: ") .. rel)
+  U.info((t:is_reviewed(rel) and "Reviewed: " or "Reviewed mark removed: ") .. rel)
 end
 
 return M

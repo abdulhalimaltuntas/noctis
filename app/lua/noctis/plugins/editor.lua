@@ -1,4 +1,4 @@
--- Kısayol yardımı (which-key), Git işaretleri (gitsigns), ikonlar (mini.icons).
+-- Key hints (which-key), Git signs (gitsigns), icons (mini.icons).
 return {
   {
     "folke/which-key.nvim",
@@ -9,9 +9,9 @@ return {
       for _, g in ipairs(require("noctis.registry").groups) do
         groups[#groups + 1] = { g[1], group = g[2] }
       end
-      groups[#groups + 1] = { "[", group = "önceki" }
-      groups[#groups + 1] = { "]", group = "sonraki" }
-      groups[#groups + 1] = { "g", group = "git / LSP / hareket" }
+      groups[#groups + 1] = { "[", group = "previous" }
+      groups[#groups + 1] = { "]", group = "next" }
+      groups[#groups + 1] = { "g", group = "git / LSP / motion" }
       return {
         preset = "modern",
         delay = function(ctx)
@@ -25,7 +25,7 @@ return {
           group = icons.enabled() and "+" or "+",
         },
         win = { border = icons.border_opt(), title = true },
-        -- Terminal modunda which-key tetiklenmez: shell/AI tuşları korunur
+        -- which-key doesn't trigger in terminal mode: shell/AI keys are preserved
         triggers = { { "<auto>", mode = "nxso" } },
       }
     end,
@@ -52,17 +52,17 @@ return {
           local gs = require("gitsigns")
           vim.keymap.set("n", "]h", function()
             gs.nav_hunk("next")
-          end, { buffer = buf, desc = "Sonraki Git hunk" })
+          end, { buffer = buf, desc = "Next Git hunk" })
           vim.keymap.set("n", "[h", function()
             gs.nav_hunk("prev")
-          end, { buffer = buf, desc = "Önceki Git hunk" })
+          end, { buffer = buf, desc = "Previous Git hunk" })
         end,
       }
     end,
   },
   {
     "nvim-mini/mini.icons",
-    lazy = true, -- terminalden bağımsız kurulur; yalnız ikonlar açıkken yüklenir
+    lazy = true, -- installed regardless of the terminal; loaded only when icons are on
     opts = {},
     init = function()
       if not require("noctis.ui.icons").enabled() then

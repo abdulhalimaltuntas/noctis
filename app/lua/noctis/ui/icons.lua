@@ -1,12 +1,12 @@
--- İkon ve kenarlık setleri. `icons = false` ile tüm arayüz Nerd Font olmadan
--- eksiksiz çalışır. Linux konsolu (TERM=linux) gibi sınırlı ortamlarda
--- otomatik olarak sade karakterlere dönülür.
+-- Icon and border sets. With `icons = false` the whole interface works fully
+-- without a Nerd Font. In limited environments such as the Linux console
+-- (TERM=linux) it falls back to plain characters automatically.
 local M = {}
 
 local nerd = {
   diag = { error = " ", warn = " ", info = " ", hint = "󰌶 " },
   git = { branch = " ", added = "+", changed = "~", removed = "-" },
-  file = { modified = "●", readonly = "", unnamed = "[adsız]" },
+  file = { modified = "●", readonly = "", unnamed = "[No Name]" },
   ui = {
     lock = "",
     ai = "󰚩 ",
@@ -34,7 +34,7 @@ local nerd = {
 local plain = {
   diag = { error = "E", warn = "W", info = "I", hint = "H" },
   git = { branch = "", added = "+", changed = "~", removed = "-" },
-  file = { modified = "*", readonly = "RO", unnamed = "[adsız]" },
+  file = { modified = "*", readonly = "RO", unnamed = "[No Name]" },
   ui = {
     lock = "RO",
     ai = "AI ",
@@ -80,7 +80,7 @@ function M.border_name()
   return b
 end
 
---- nvim_open_win için kenarlık tablosu
+--- Border table for nvim_open_win
 function M.border()
   local b = M.border_name()
   if b == "rounded" then
@@ -91,7 +91,7 @@ function M.border()
   return { "+", "-", "+", "|", "+", "-", "+", "|" }
 end
 
---- Eklenti seçenekleri için kenarlık: adlandırılmış stil veya ASCII'de 8'li tablo
+--- Border for plugin options: a named style, or an 8-item table for ASCII
 function M.border_opt()
   local b = M.border_name()
   if b:find(",") then

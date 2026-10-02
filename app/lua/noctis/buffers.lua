@@ -1,4 +1,4 @@
--- Buffer yönetimi: kaydedilmemiş değişiklikleri ve pencere düzenini koruyarak kapatma.
+-- Buffer management: closing while preserving unsaved changes and the window layout.
 local M = {}
 
 local U = require("noctis.util")
@@ -23,7 +23,7 @@ local function job_running(buf)
   return false
 end
 
---- Buffer'ı kapat; onu gösteren pencereler başka bir buffer'a geçer.
+--- Close a buffer; windows showing it switch to another buffer.
 ---@param buf? integer
 ---@param opts? {force?:boolean}
 function M.delete(buf, opts)
@@ -33,30 +33,30 @@ function M.delete(buf, opts)
     return
   end
   local name = api.nvim_buf_get_name(buf)
-  local label = name == "" and "[adsız]" or vim.fn.fnamemodify(name, ":~:.")
+  local label = name == "" and "[No Name]" or vim.fn.fnamemodify(name, ":~:.")
 
   if not opts.force and vim.bo[buf].modified then
     local choice = vim.fn.confirm(
-      ("`%s` kaydedilmemiş değişiklikler içeriyor."):format(label),
-      "&Kaydet ve kapat\n&Değişiklikleri at ve kapat\n&İptal",
+      ("`%s` has unsaved changes."):format(label),
+      "&Save and close\n&Discard changes and close\n&Cancel",
       3
     )
     if choice == 1 then
       require("noctis.files").save(buf)
       if vim.bo[buf].modified then
-        return -- kaydetme çatışma vb. nedeniyle tamamlanmadı
+        return -- saving did not complete (conflict, etc.)
       end
     elseif choice ~= 2 then
       return
     end
   end
   if not opts.force and vim.bo[buf].buftype == "terminal" and job_running(buf) then
-    if vim.fn.confirm(("`%s` içinde çalışan bir süreç var. Sonlandırılsın mı?"):format(label), "&Evet\n&Hayır", 2) ~= 1 then
+    if vim.fn.confirm(("`%s` has a running process. Stop it?"):format(label), "&Yes\n&No", 2) ~= 1 then
       return
     end
   end
 
-  -- Pencereleri boşaltmadan önce yerine geçecek buffer seç.
+  -- Pick the replacement buffer before emptying the windows.
   local others = listed_file_bufs(buf)
   local alt = vim.fn.bufnr("#")
   local replacement = (alt > 0 and alt ~= buf and vim.bo[alt].buflisted) and alt or others[#others]
@@ -87,7 +87,7 @@ function M.delete_others()
     end
   end
   if kept > 0 then
-    U.info(("%d buffer açık bırakıldı (kaydedilmemiş veya çalışan süreç)."):format(kept))
+    U.info(("%d buffers left open (unsaved or running a process)."):format(kept))
   end
 end
 
@@ -96,7 +96,7 @@ function M.close_window()
     return api.nvim_win_get_config(w).relative == ""
   end, api.nvim_tabpage_list_wins(0))
   if #normal <= 1 and #api.nvim_list_tabpages() == 1 then
-    U.info("Son pencere kapatılmaz. Buffer kapatmak: Space b d · Çıkmak: Space q q")
+    U.info("The last window is not closed. Close the buffer: Space b d · Quit: Space q q")
     return
   end
   vim.cmd("close")

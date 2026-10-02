@@ -1,13 +1,13 @@
--- AI CLI oturumları: gerçek PTY (Neovim terminal job). Her oturumun sabit
--- proje kökü, araç etiketi, benzersiz kimliği ve terminal buffer'ı vardır.
--- Panel gizlenince süreç çalışmaya devam eder; durdurma/yeniden başlatma
--- açık kullanıcı eylemleridir.
+-- AI CLI sessions: a real PTY (a Neovim terminal job). Every session has a
+-- fixed project root, a tool label, a unique id and a terminal buffer.
+-- The process keeps running when the panel is hidden; stop/restart are
+-- explicit user actions.
 --
--- Durum yalnız kanıta göre gösterilir:
---   starting  süreç başlatıldı, henüz çıktı yok
---   running   süreç canlı ve çıktı üretti (görevin sürdüğü anlamına GELMEZ)
---   exited    süreç çıktı (kod gösterilir)
---   failed    başlatılamadı (executable yok / 126 / 127)
+-- Status is shown only by evidence:
+--   starting  the process was started, no output yet
+--   running   the process is alive and produced output (does NOT mean a task is in progress)
+--   exited    the process exited (the code is shown)
+--   failed    could not start (no executable / 126 / 127)
 local M = {}
 
 local U = require("noctis.util")
@@ -33,10 +33,10 @@ M.list = {}
 local counter = 0
 
 local STATUS_TEXT = {
-  starting = "başlatılıyor",
-  running = "çalışıyor",
-  exited = "çıktı",
-  failed = "başlatılamadı",
+  starting = "starting",
+  running = "running",
+  exited = "exited",
+  failed = "failed to start",
 }
 
 function M.status_text(s)
@@ -55,14 +55,14 @@ end
 
 ---@param profile table
 ---@param root string
----@param win integer terminal buffer'ını gösterecek pencere
+---@param win integer the window that will show the terminal buffer
 ---@param opts? {resume?:boolean}
 ---@return noctis.AISession? session, string? err
 function M.start(profile, root, win, opts)
   opts = opts or {}
   local exe = require("noctis.ai.profiles").resolve(profile)
   if not exe then
-    return nil, ("`%s` bulunamadı.\nKurulum: %s\nBelgeler: %s"):format(profile.cmd[1], profile.install or "aracın belgelerine bakın", profile.docs or "-")
+    return nil, ("`%s` not found.\nInstall: %s\nDocs: %s"):format(profile.cmd[1], profile.install or "see the tool's documentation", profile.docs or "-")
   end
   local cmd = { exe }
   for i = 2, #profile.cmd do
@@ -70,7 +70,7 @@ function M.start(profile, root, win, opts)
   end
   if opts.resume then
     if not profile.resume_args then
-      return nil, profile.label .. " için doğrulanmış bir devam etme (resume) yeteneği tanımlı değil."
+      return nil, "No verified resume capability is defined for " .. profile.label .. "."
     end
     vim.list_extend(cmd, profile.resume_args)
   end
@@ -111,7 +111,7 @@ function M.start(profile, root, win, opts)
         s.code = code
         s.status = (code == 126 or code == 127) and "failed" or "exited"
         emit(s)
-        -- Süreç bitince kaçırılmış olabilecek değişiklikleri yakala
+        -- When the process ends, catch changes that may have been missed
         vim.schedule(function()
           local t = require("noctis.ai.tracker").get(s.root)
           if t then
@@ -126,7 +126,7 @@ function M.start(profile, root, win, opts)
     s.error = tostring(job)
     M.list[#M.list + 1] = s
     emit(s)
-    return s, "başlatılamadı: " .. tostring(job)
+    return s, "failed to start: " .. tostring(job)
   end
   s.job = job
   M.list[#M.list + 1] = s
@@ -162,7 +162,7 @@ function M.stop(s)
   end
 end
 
---- Oturumu listeden kaldır (buffer silinir)
+--- Remove the session from the list (the buffer is deleted)
 function M.remove(s)
   M.stop(s)
   if api.nvim_buf_is_valid(s.buf) then
@@ -174,12 +174,12 @@ function M.remove(s)
   emit(s)
 end
 
---- Seçimi/bağlamı aracın girişine yapıştır (Enter gönderilmez; kullanıcı gözden geçirip gönderir).
+--- Paste the selection/context into the tool's input (Enter isn't sent; the user reviews and sends it).
 function M.paste(s, text)
   if not M.alive(s) then
     return false
   end
-  -- Köşeli parantezli yapıştırma: çok satırlı metin satır satır gönderilmez
+  -- Bracketed paste: multi-line text isn't sent line by line
   vim.fn.chansend(s.job, "\27[200~" .. text .. "\27[201~")
   return true
 end

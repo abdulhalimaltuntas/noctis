@@ -1,6 +1,6 @@
--- Üst çubuk: açık dosyalar (buffer listesi). Neovim sekmeleri (tabpage) farklı
--- bir kavramdır; yalnız birden fazla sekme varken sağda "sekme 2/3" olarak
--- gösterilir. Aynı dosya iki ayrı çubukta tekrarlanmaz.
+-- Top bar: open files (the buffer list). Neovim tabs (tabpages) are a separate
+-- concept; only when there is more than one tab is it shown on the right as
+-- "tab 2/3". The same file is never repeated in two bars.
 local M = {}
 
 local api = vim.api
@@ -20,7 +20,7 @@ local function file_bufs()
   return out
 end
 
---- Aynı ada sahip dosyalar için üst klasörü ekleyerek ayırt edici etiket üret
+--- Build distinguishing labels for same-named files by adding the parent folder
 local function labels(bufs)
   local tails, out = {}, {}
   for _, b in ipairs(bufs) do
@@ -42,7 +42,7 @@ function _G.NoctisTablineClick(bufnr, clicks, button)
   if button == "m" then
     require("noctis.buffers").delete(bufnr)
   elseif api.nvim_buf_is_valid(bufnr) then
-    -- Bir yan panel odaktaysa editör penceresine geç
+    -- If a side panel has focus, switch to the editor window first
     require("noctis.ui.layout").focus_editor()
     api.nvim_set_current_buf(bufnr)
   end
@@ -58,9 +58,9 @@ function M.render()
   local right = ""
   local tabs = #api.nvim_list_tabpages()
   if tabs > 1 then
-    right = ("%%#NoctisTabPage# sekme %d/%d "):format(vim.fn.tabpagenr(), tabs)
+    right = ("%%#NoctisTabPage# tab %d/%d "):format(vim.fn.tabpagenr(), tabs)
   end
-  local right_w = tabs > 1 and #(" sekme 0/0 ") + 2 or 0
+  local right_w = tabs > 1 and #(" tab 0/0 ") + 2 or 0
 
   local items = {}
   local active_idx = 1
@@ -93,7 +93,7 @@ function M.render()
     return "%#NoctisTabFill#%=" .. right
   end
 
-  -- Taşma: aktif buffer'ı görünür tutan pencere
+  -- Overflow: a window that keeps the active buffer visible
   local avail = cols - right_w - 4
   local first, last = active_idx, active_idx
   local used = items[active_idx].w

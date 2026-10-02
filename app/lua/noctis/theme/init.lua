@@ -1,5 +1,5 @@
--- Tema motoru: aktif temayı uygular, değiştirir ve seçimi kalıcı kılar.
--- Truecolor yoksa her renk en yakın xterm-256 rengine eşlenir.
+-- Theme engine: applies the active theme, switches it and persists the choice.
+-- Without truecolor every color is mapped to the nearest xterm-256 color.
 local M = {}
 
 local palettes = require("noctis.theme.palettes")
@@ -22,7 +22,7 @@ local function nearest_cube(v)
 end
 
 local cache = {}
---- #RRGGBB -> xterm-256 indeksi (16..255; sistem renklerinden kaçınır)
+--- #RRGGBB -> xterm-256 index (16..255; avoids the system colors)
 function M.to_cterm(hex)
   if cache[hex] then
     return cache[hex]
@@ -76,7 +76,7 @@ function M.apply(name, opts)
   local cfg = require("noctis.config").options
   name = name or cfg.theme
   if not M.exists(name) then
-    require("noctis.util").warn(("Bilinmeyen tema `%s`; Midnight Violet kullanılıyor"):format(tostring(name)))
+    require("noctis.util").warn(("Unknown theme `%s`; using Midnight Violet"):format(tostring(name)))
     name = "midnight-violet"
   end
   local t = tokens.derive(palettes[name])
@@ -105,8 +105,8 @@ function M.apply(name, opts)
   vim.api.nvim_exec_autocmds("User", { pattern = "NoctisThemeChanged", modeline = false })
 end
 
---- Tema seçici (önizlemeli): seçim değiştikçe tema anında uygulanır,
---- iptal edilirse önceki temaya dönülür.
+--- Theme picker (with preview): the theme applies as the selection changes,
+--- and the previous theme comes back if cancelled.
 function M.pick()
   local before = M.current
   local items = {}
@@ -114,22 +114,22 @@ function M.pick()
     items[#items + 1] = n
   end
   vim.ui.select(items, {
-    prompt = "Tema seç",
+    prompt = "Pick a theme",
     format_item = function(n)
-      return palettes.labels[n] .. (n == before and "  (etkin)" or "")
+      return palettes.labels[n] .. (n == before and "  (active)" or "")
     end,
   }, function(choice)
     if choice then
       M.apply(choice, { persist = true })
-      require("noctis.util").info("Tema: " .. palettes.labels[choice])
+      require("noctis.util").info("Theme: " .. palettes.labels[choice])
     elseif before then
       M.apply(before)
     end
   end)
 end
 
--- Kullanıcının `:colorscheme` ile başka bir şemaya geçmesi meşrudur; NOCTIS
--- bileşen grupları korunur ki arayüz bozulmasın.
+-- Switching to another scheme with `:colorscheme` is legitimate; NOCTIS
+-- component groups are kept so the interface doesn't break.
 function M.setup()
   vim.api.nvim_create_autocmd("ColorScheme", {
     group = vim.api.nvim_create_augroup("noctis_theme", { clear = true }),

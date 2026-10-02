@@ -178,9 +178,9 @@ function M.toggle()
   o.typing_animation = not o.typing_animation
   M.refresh()
   if o.typing_animation and not vim.o.termguicolors then
-    require("noctis.util").warn("Yazma animasyonu truecolor gerektirir; terminal 256 renk modunda.")
+    require("noctis.util").warn("The typing animation needs truecolor; the terminal is in 256-color mode.")
   else
-    require("noctis.util").info("Yazma animasyonu " .. (o.typing_animation and "açık" or "kapalı"))
+    require("noctis.util").info("Typing animation " .. (o.typing_animation and "on" or "off"))
   end
 end
 

@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# NOCTIS kaldırma scripti. Yalnız NOCTIS'in yönettiği dosyaları hedefler;
-# projelerinize asla dokunmaz.
-#   Varsayılan: başlatıcı, uygulama, eklentiler/Mason araçları/parser'lar, cache
-#   Korunur:    ayarlar (config.lua), oturumlar, undo geçmişi, AI kayıtları,
-#               çöp kutusu ve kurtarılan kopyalar   (--purge ile bunlar da silinir)
+# NOCTIS uninstall script. Only targets files managed by NOCTIS;
+# your projects are never touched.
+#   Default: launcher, app, plugins/Mason tools/parsers, cache
+#   Kept:    settings (config.lua), sessions, undo history, AI records,
+#            trash and recovered copies   (--purge removes these too)
 set -euo pipefail
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -26,58 +26,58 @@ for a in "$@"; do
     --yes|-y) YES=1 ;;
     -h|--help)
       sed -n '2,8p' "$0" | sed 's/^# \{0,1\}//'
-      echo "Kullanım: scripts/uninstall.sh [--purge] [--yes]"
+      echo "Usage: scripts/uninstall.sh [--purge] [--yes]"
       exit 0 ;;
-    *) echo "Bilinmeyen seçenek: $a" >&2; exit 2 ;;
+    *) echo "Unknown option: $a" >&2; exit 2 ;;
   esac
 done
 
-# Güvenlik: yalnız APPNAME ile biten, boş olmayan yollar silinir
+# Safety: only non-empty paths ending in APPNAME are removed
 safe_rm() {
   local p="$1"
   case "$p" in
-    ""|"/"|"$HOME"|"$HOME/") echo "Güvensiz yol atlandı: '$p'" >&2; return ;;
+    ""|"/"|"$HOME"|"$HOME/") echo "Skipped an unsafe path: '$p'" >&2; return ;;
   esac
   case "$p" in
     */"$APPNAME") ;;
-    *) echo "Beklenmeyen yol atlandı: $p" >&2; return ;;
+    *) echo "Skipped an unexpected path: $p" >&2; return ;;
   esac
   if [ -e "$p" ]; then
     rm -rf -- "$p"
-    echo "  silindi: $p"
+    echo "  removed: $p"
   fi
   return 0
 }
 
 targets=()
 [ -f "$LAUNCHER" ] && grep -q "$MARKER" "$LAUNCHER" && targets+=("$LAUNCHER")
-[ -d "$DATA_DIR" ] && targets+=("$DATA_DIR  (uygulama, eklentiler, Mason araçları, parser'lar)")
+[ -d "$DATA_DIR" ] && targets+=("$DATA_DIR  (app, plugins, Mason tools, parsers)")
 [ -d "$CACHE_DIR" ] && targets+=("$CACHE_DIR")
 if [ "$PURGE" -eq 1 ]; then
-  [ -d "$CONFIG_DIR" ] && targets+=("$CONFIG_DIR  (AYARLARINIZ)")
-  [ -d "$STATE_DIR" ] && targets+=("$STATE_DIR  (oturumlar, undo, AI kayıtları, çöp kutusu)")
+  [ -d "$CONFIG_DIR" ] && targets+=("$CONFIG_DIR  (YOUR SETTINGS)")
+  [ -d "$STATE_DIR" ] && targets+=("$STATE_DIR  (sessions, undo, AI records, trash)")
 fi
 
 if [ ${#targets[@]} -eq 0 ]; then
-  echo "$NAME kurulumu bulunamadı."
+  echo "No $NAME installation found."
   exit 0
 fi
-echo "$NAME kaldırılacak. Silinecekler:"
+echo "$NAME will be uninstalled. To be removed:"
 for t in "${targets[@]}"; do echo "  • $t"; done
 if [ "$PURGE" -eq 0 ]; then
-  echo "Korunacaklar (silmek için --purge):"
-  [ -d "$CONFIG_DIR" ] && echo "  • $CONFIG_DIR (ayarlar)"
-  [ -d "$STATE_DIR" ] && echo "  • $STATE_DIR (oturumlar, undo, AI kayıtları, çöp kutusu, kurtarılan kopyalar)"
+  echo "Kept (remove with --purge):"
+  [ -d "$CONFIG_DIR" ] && echo "  • $CONFIG_DIR (settings)"
+  [ -d "$STATE_DIR" ] && echo "  • $STATE_DIR (sessions, undo, AI records, trash, recovered copies)"
 fi
-echo "Projelerinize dokunulmaz."
+echo "Your projects are not touched."
 if [ "$YES" -ne 1 ]; then
-  printf 'Devam edilsin mi? [e/H] '
+  printf 'Continue? [y/N] '
   read -r ans || exit 1
-  case "$ans" in e|E|evet|y|Y|yes) ;; *) echo "İptal edildi."; exit 1 ;; esac
+  case "$ans" in y|Y|yes|YES) ;; *) echo "Cancelled."; exit 1 ;; esac
 fi
 
 if [ -f "$LAUNCHER" ] && grep -q "$MARKER" "$LAUNCHER"; then
-  rm -f -- "$LAUNCHER" && echo "  silindi: $LAUNCHER"
+  rm -f -- "$LAUNCHER" && echo "  removed: $LAUNCHER"
 fi
 safe_rm "$DATA_DIR"
 safe_rm "$CACHE_DIR"
@@ -85,4 +85,4 @@ if [ "$PURGE" -eq 1 ]; then
   safe_rm "$CONFIG_DIR"
   safe_rm "$STATE_DIR"
 fi
-echo "Tamam."
+echo "Done."
