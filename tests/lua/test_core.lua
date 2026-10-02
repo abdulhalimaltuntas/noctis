@@ -461,4 +461,242 @@ H.test("can be turned off; disabled automatically in 256-color mode", function()
   vim.cmd("bwipeout!")
 end)
 
+H.suite("Theme and contrast")
+
+H.test("every theme passes the contrast audit (AA text, 3:1 dim text, 2:1 popup borders)", function()
+  local problems = require("noctis.theme").audit()
+  local lines = {}
+  for i = 1, math.min(#problems, 10) do
+    local p = problems[i]
+    lines[#lines + 1] = ("%s %s %.2f < %.1f (%s on %s)"):format(p.theme, p.group, p.ratio, p.min, p.fg, p.bg)
+  end
+  H.eq(#problems, 0, "low-contrast pairs:\n" .. table.concat(lines, "\n"))
+end)
+
+H.test("each variant sets 'background'; Daybreak is light and its terminal palette stays readable", function()
+  local theme = require("noctis.theme")
+  local tokens = require("noctis.theme.tokens")
+  theme.apply("daybreak")
+  H.eq(vim.o.background, "light")
+  H.eq(vim.g.colors_name, "daybreak")
+  -- ANSI "black" is dark and "white" a readable grey on the light ground
+  H.ok(tokens.contrast(vim.g.terminal_color_0, theme.tokens.bg) >= 4.5, "color0 readable")
+  H.ok(tokens.contrast(vim.g.terminal_color_7, theme.tokens.bg) >= 4.5, "color7 readable")
+  for _, name in ipairs({ "midnight-violet", "glacier", "amber" }) do
+    theme.apply(name)
+    H.eq(vim.o.background, "dark", name)
+  end
+  theme.apply("midnight-violet")
+end)
+
+H.test(":set background=light switches to Daybreak; dark returns to the last dark theme", function()
+  local theme = require("noctis.theme")
+  vim.cmd("colorscheme glacier")
+  H.eq(vim.g.colors_name, "glacier")
+  vim.o.background = "light"
+  H.eq(vim.g.colors_name, "daybreak")
+  H.eq(vim.o.background, "light")
+  vim.o.background = "dark"
+  H.eq(vim.g.colors_name, "glacier", "back to the dark theme in use before")
+  -- an explicit :colorscheme is respected as is
+  vim.cmd("colorscheme amber")
+  H.eq(vim.g.colors_name, "amber")
+  H.eq(vim.o.background, "dark")
+  theme.apply("midnight-violet")
+end)
+
+H.test("transparent mode: no editor background; the cursor line is a tint, not a dark band", function()
+  local cfg = require("noctis.config").options
+  local theme = require("noctis.theme")
+  local tokens = require("noctis.theme.tokens")
+  cfg.transparent = true
+  theme.apply("midnight-violet")
+  H.eq(vim.api.nvim_get_hl(0, { name = "Normal" }).bg, nil, "Normal bg is NONE")
+  local cl = ("#%06X"):format(vim.api.nvim_get_hl(0, { name = "CursorLine" }).bg)
+  local p = require("noctis.theme.palettes")["midnight-violet"]
+  H.eq(cl, tokens.blend(p.accent, p.bg, 0.10))
+  cfg.transparent = false
+  theme.apply("midnight-violet")
+end)
+
+H.test("code punctuation and popup borders no longer reuse the UI chrome grey", function()
+  local theme = require("noctis.theme")
+  theme.apply("midnight-violet")
+  local function fg(g)
+    return vim.api.nvim_get_hl(0, { name = g, link = false }).fg
+  end
+  local muted = tonumber(theme.tokens.muted:sub(2), 16)
+  H.ok(fg("Delimiter") ~= muted, "Delimiter")
+  H.ok(fg("Operator") ~= muted and fg("Operator") ~= fg("Delimiter"), "Operator has its own tone")
+  H.ok(fg("@punctuation.bracket") == fg("Delimiter"), "brackets match delimiters")
+  local border = tonumber(theme.tokens.border:sub(2), 16)
+  H.ok(fg("FloatBorder") ~= border, "popup border is not the separator color")
+end)
+
+H.suite("Command palette and dashboard")
+
+local function palette_items()
+  local got
+  local orig = vim.ui.select
+  vim.ui.select = function(items, opts, cb)
+    got = { items = items, opts = opts }
+    cb(nil)
+  end
+  require("noctis.palette").open()
+  vim.ui.select = orig
+  return got
+end
+
+H.test("commands used from the palette come first, most used first; old uses fade", function()
+  local U = require("noctis.util")
+  local path = U.state_dir() .. "/palette.json"
+  local now = os.time()
+  U.json_write(path, {
+    version = 1,
+    uses = {
+      ["ui.theme"] = { n = 1, t = now },
+      help = { n = 3, t = now },
+      -- many uses two months ago weigh less than one use today
+      ["files.find"] = { n = 10, t = now - 60 * 86400 },
+    },
+  })
+  local got = palette_items()
+  H.eq(got.items[1].id, "help")
+  H.eq(got.items[2].id, "ui.theme")
+  H.eq(got.items[3].id, "files.find")
+  H.ok(got.opts.format_item(got.items[1]):find("(recent)", 1, true), "recent items are marked")
+  -- the rest keep registration order
+  local R = require("noctis.registry")
+  local rest = {}
+  for i = 4, #got.items do
+    if got.items[i].ok then
+      rest[#rest + 1] = got.items[i].order
+    end
+  end
+  for i = 2, #rest do
+    H.ok(rest[i] > rest[i - 1], "registration order after the recent ones")
+  end
+  H.ok(R.by_id[got.items[1].id], "known id")
+  vim.fn.delete(path)
+end)
+
+H.test("running a command from the palette records it; unavailable commands never jump ahead", function()
+  local U = require("noctis.util")
+  local path = U.state_dir() .. "/palette.json"
+  vim.fn.delete(path)
+  local P = require("noctis.palette")
+  P.record("help")
+  P.record("help")
+  local st = U.json_read(path)
+  H.ok(st.uses.help.n > 1.9 and st.uses.help.n <= 2, "two uses counted")
+  -- a recorded command that can't run stays among the unavailable ones
+  local R = require("noctis.registry")
+  local unavailable
+  for _, c in ipairs(R.list) do
+    if c.palette ~= false and not R.available(c) then
+      unavailable = c.id
+      break
+    end
+  end
+  if unavailable then
+    for _ = 1, 5 do
+      P.record(unavailable)
+    end
+    local got = palette_items()
+    H.eq(got.items[1].id, "help")
+    for i, it in ipairs(got.items) do
+      if it.id == unavailable then
+        H.ok(not it.recent and i > 1, "unavailable command not promoted")
+      end
+    end
+  end
+  vim.fn.delete(path)
+end)
+
+H.test("every Nerd Font icon has a glyph (none lost to an editor stripping private-use characters)", function()
+  local term = vim.env.TERM
+  vim.env.TERM = "xterm-256color"
+  local blank = {}
+  local function walk(t, path)
+    for k, v in pairs(t) do
+      if type(v) == "table" then
+        walk(v, path .. "." .. k)
+      elseif type(v) == "string" and vim.trim(v) == "" then
+        blank[#blank + 1] = path .. "." .. k
+      end
+    end
+  end
+  walk(require("noctis.ui.icons").get(), "icons")
+  vim.env.TERM = term
+  table.sort(blank)
+  H.eq(table.concat(blank, ", "), "", "blank icons")
+end)
+
+H.test("with icons on, dashboard actions and palette rows carry their group glyph", function()
+  local term = vim.env.TERM
+  vim.env.TERM = "xterm-256color"
+  local icons = require("noctis.ui.icons")
+  H.ok(icons.enabled(), "icons on")
+  local dash = require("noctis.ui.dashboard")
+  dash.open({ force = true })
+  local buf = dash.buf
+  local lines = vim.api.nvim_buf_get_lines(buf, 0, -1, false)
+  local row
+  for i, l in ipairs(lines) do
+    if l:find("Find file", 1, true) then
+      row = i
+    end
+  end
+  H.ok(row, "Find file action shown")
+  H.ok(lines[row]:find(icons.get().ui.file, 1, true), "glyph before the label")
+  local found
+  for _, m in ipairs(vim.api.nvim_buf_get_extmarks(buf, -1, { row - 1, 0 }, { row - 1, -1 }, { details = true })) do
+    if m[4].hl_group == "NoctisGroupFile" then
+      found = true
+    end
+  end
+  H.ok(found, "glyph colored by its command group")
+  dash.close()
+  vim.env.TERM = "linux"
+  H.ok(not icons.enabled(), "plain on the Linux console")
+  H.eq(select(1, icons.group("File")), "", "no glyph column without icons")
+  vim.env.TERM = term
+end)
+
+H.test("before the first AI session the Changes view explains the review flow, with live keys", function()
+  local review = require("noctis.ai.review")
+  review.set_root(nil)
+  local buf = review.ensure_list_buf()
+  review.render()
+  local text = table.concat(vim.api.nvim_buf_get_lines(buf, 0, -1, false), "\n")
+  H.ok(text:find("AI change review", 1, true), "title")
+  H.ok(text:find("Start an AI tool  ·  Space a n", 1, true), "key from the registry")
+  H.ok(text:find("recovery folder", 1, true), "revert safety is stated")
+  local cfg = require("noctis.config").options
+  cfg.keymaps["ai.new"] = "<leader>aN"
+  review.render()
+  text = table.concat(vim.api.nvim_buf_get_lines(buf, 0, -1, false), "\n")
+  H.ok(text:find("Space a N", 1, true), "user override shown")
+  cfg.keymaps["ai.new"] = nil
+  vim.api.nvim_buf_delete(buf, { force = true })
+end)
+
+H.test("pending keys show in the statusline and vanish when nothing is pending", function()
+  H.eq(vim.o.showcmdloc, "statusline")
+  local st = require("noctis.ui.statusline").render()
+  H.ok(st:find("%(%S  %)", 1, true), "showcmd group present")
+  local out = vim.api.nvim_eval_statusline(st, {}).str
+  H.ok(not out:find("│%s*│"), "no empty separator pair")
+  -- In command-line mode the `:` that opened it must not linger in the bar
+  local in_cmdline
+  vim.keymap.set("c", "<F30>", function()
+    in_cmdline = require("noctis.ui.statusline").render()
+    return ""
+  end, { expr = true })
+  vim.api.nvim_feedkeys(vim.keycode(":<F30><C-c>"), "tx", false)
+  vim.keymap.del("c", "<F30>")
+  H.ok(in_cmdline, "rendered from command-line mode")
+  H.ok(not in_cmdline:find("%S", 1, true), "no pending-keys item in command-line mode")
+end)
+
 H.done()

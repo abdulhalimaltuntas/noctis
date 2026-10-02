@@ -7,7 +7,7 @@ function M.open()
   if not vim.uv.fs_stat(path) then
     local example = require("noctis.brand").home .. "/examples/config.lua"
     local text = require("noctis.util").read_file(example)
-      or "-- NOCTIS user settings. Changes apply after a restart.\nreturn {\n  -- theme = \"glacier\",\n}\n"
+      or "-- NOCTIS user settings. Changes apply after a restart.\nreturn {\n  -- theme = \"glacier\", -- or \"amber\", \"daybreak\" (light)\n}\n"
     vim.fn.mkdir(vim.fn.fnamemodify(path, ":h"), "p")
     require("noctis.util").write_file(path, text, 420)
   end

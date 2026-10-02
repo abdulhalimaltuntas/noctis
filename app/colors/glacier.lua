@@ -1,2 +1,2 @@
 -- :colorscheme glacier
-require("noctis.theme").apply("glacier")
+require("noctis.theme").load("glacier")

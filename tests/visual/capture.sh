@@ -154,6 +154,25 @@ if want theme-amber; then
   shot theme-amber "#14100b" "#ede3d3"
 fi
 
+if want theme-daybreak; then
+  start theme-daybreak 120 35 "return { theme = 'daybreak' }" "$REPO/bin/noctis app/main.py"
+  keys " " "e"; sleep 0.8; keys C-l
+  shot theme-daybreak "#f7f8fc" "#1e2433"
+fi
+
+# Command line popup at the top center (noice) with the completion menu under it
+if want cmdline-popup; then
+  start cmdline-popup 120 35 "" "$REPO/bin/noctis app/main.py"
+  lit ":"; lit "Noctis"; keys Tab; sleep 0.6
+  shot cmdline-popup
+fi
+
+if want cmdline-lua; then
+  start cmdline-lua 120 35 "return { theme = 'daybreak' }" "$REPO/bin/noctis app/main.py"
+  lit ":"; lit "lua vim.print(vim.fn.getcwd())"; sleep 0.4
+  shot cmdline-lua "#f7f8fc" "#1e2433"
+fi
+
 if want no-icons-ascii; then
   start no-icons-ascii 100 30 "return { icons = false, borders = 'ascii' }" "$REPO/bin/noctis app/main.py"
   keys " " " "; sleep 0.5; lit "theme"

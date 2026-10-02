@@ -4,7 +4,7 @@
 local M = {}
 
 M.defaults = {
-  theme = "midnight-violet", -- "midnight-violet" | "glacier" | "amber"
+  theme = "midnight-violet", -- "midnight-violet" | "glacier" | "amber" | "daybreak" (light)
   transparent = false, -- let the terminal provide the editor background
   icons = true, -- Nerd Font icons; false uses plain characters
   borders = "rounded", -- "rounded" | "single" | "ascii"
@@ -17,6 +17,7 @@ M.defaults = {
     explorer_width = 30,
     wrap = false,
     typing_animation = true, -- brief glow behind typed characters (needs truecolor)
+    cmdline = "popup", -- "popup" (top center, as in LazyVim) | "classic" (Neovim's bottom line)
   },
   diagnostics = {
     virtual_text = true,
@@ -63,10 +64,11 @@ M.defaults = {
 
 -- Schema: the defaults define the types; extra constraints live here.
 local enums = {
-  theme = { "midnight-violet", "glacier", "amber" },
+  theme = { "midnight-violet", "glacier", "amber", "daybreak" },
   borders = { "rounded", "single", "ascii" },
   clipboard = { "auto", "system", "internal" },
   ["ai.layout"] = { "auto", "right", "bottom", "full" },
+  ["ui.cmdline"] = { "popup", "classic" },
 }
 local special = {
   truecolor = function(v)

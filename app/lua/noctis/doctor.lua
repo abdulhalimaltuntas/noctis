@@ -142,6 +142,20 @@ function M.checks()
     add("warn", "Linux console: icons and rounded borders fall back to plain characters automatically")
   end
   add("info", ("Icons: %s (a Nerd Font can't be detected reliably; if they don't render, set icons = false)"):format(cfg.options.icons and "on" or "off"))
+  local theme = require("noctis.theme")
+  local tname = theme.exists(cfg.options.theme) and cfg.options.theme or "midnight-violet"
+  local problems = theme.audit(tname)
+  local label = require("noctis.theme.palettes").labels[tname]
+  if #problems == 0 then
+    add("ok", ("Theme %s: every text color passes WCAG AA contrast"):format(label))
+  else
+    local first = problems[1]
+    add(
+      "warn",
+      ("Theme %s: %d low-contrast color pair(s), e.g. %s %.2f:1 (needs %.1f:1)"):format(label, #problems, first.group, first.ratio, first.min),
+      "Run require('noctis.theme').audit() for the full list"
+    )
+  end
 
   -- ── Clipboard ──────────────────────────────────────────────────────────
   section("System clipboard")

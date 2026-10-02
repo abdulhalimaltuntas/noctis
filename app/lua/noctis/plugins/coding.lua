@@ -33,6 +33,11 @@ return {
           accept = { auto_brackets = { enabled = true } },
         },
         signature = { enabled = true, window = { border = border } },
+        -- Command line completion (under the popup when ui.cmdline = "popup"):
+        -- names only; kind and source columns are noise for commands and paths.
+        cmdline = {
+          completion = { menu = { draw = { columns = { { "label", "label_description", gap = 1 } } } } },
+        },
         appearance = { nerd_font_variant = "mono", use_nvim_cmp_as_default = false },
         sources = {
           default = { "lsp", "path", "snippets", "buffer" },

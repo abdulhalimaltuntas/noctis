@@ -15,7 +15,7 @@ function M.build(c, opts)
   h.Normal = { fg = c.fg, bg = bg }
   h.NormalNC = { fg = c.fg, bg = bg }
   h.NormalFloat = { fg = c.fg, bg = c.float }
-  h.FloatBorder = { fg = c.border, bg = c.float }
+  h.FloatBorder = { fg = c.border_float, bg = c.float }
   h.FloatTitle = { fg = c.accent, bg = c.float, bold = true }
   h.FloatFooter = { fg = c.muted, bg = c.float }
   h.NoctisPanel = { fg = c.fg, bg = panel }
@@ -77,11 +77,11 @@ function M.build(c, opts)
   h.PmenuKind = { fg = c.accent2, bg = c.float }
   h.PmenuKindSel = { fg = c.accent2, bg = c.accent_bg }
   h.PmenuExtra = { fg = c.muted, bg = c.float }
-  h.PmenuExtraSel = { fg = c.muted, bg = c.accent_bg }
+  h.PmenuExtraSel = { fg = c.fg_subtle, bg = c.accent_bg }
   h.PmenuSbar = { bg = c.float }
   h.PmenuThumb = { bg = c.border }
   h.PmenuMatch = { fg = c.accent, bold = true }
-  h.PmenuMatchSel = { fg = c.accent, bg = c.accent_bg, bold = true }
+  h.PmenuMatchSel = { fg = c.accent_hi, bg = c.accent_bg, bold = true }
   h.PmenuBorder = { link = "FloatBorder" }
   h.ComplMatchIns = { fg = c.muted }
   h.SnippetTabstop = { bg = c.hint_bg }
@@ -121,7 +121,7 @@ function M.build(c, opts)
   h.Conditional = { fg = s.keyword }
   h.Repeat = { fg = s.keyword }
   h.Label = { fg = s.keyword }
-  h.Operator = { fg = c.muted }
+  h.Operator = { fg = c.operator }
   h.Keyword = { fg = s.keyword }
   h.Exception = { fg = s.keyword }
   h.PreProc = { fg = s.keyword }
@@ -136,7 +136,7 @@ function M.build(c, opts)
   h.Special = { fg = s.special }
   h.SpecialChar = { fg = s.special }
   h.Tag = { fg = s.keyword }
-  h.Delimiter = { fg = c.muted }
+  h.Delimiter = { fg = c.punct }
   h.SpecialComment = { fg = s.comment, bold = true }
   h.Debug = { fg = c.warning }
   h.Underlined = { underline = true }
@@ -178,9 +178,9 @@ function M.build(c, opts)
   h["@keyword.return"] = { fg = s.keyword, italic = true }
   h["@keyword.import"] = { fg = s.keyword }
   h["@keyword.operator"] = { fg = s.keyword }
-  h["@punctuation"] = { fg = c.muted }
-  h["@punctuation.bracket"] = { fg = c.muted }
-  h["@punctuation.delimiter"] = { fg = c.muted }
+  h["@punctuation"] = { fg = c.punct }
+  h["@punctuation.bracket"] = { fg = c.punct }
+  h["@punctuation.delimiter"] = { fg = c.punct }
   h["@punctuation.special"] = { fg = s.special }
   h["@comment"] = { link = "Comment" }
   h["@comment.todo"] = { fg = c.bg, bg = c.accent2, bold = true }
@@ -190,7 +190,7 @@ function M.build(c, opts)
   h["@tag"] = { fg = s.keyword }
   h["@tag.builtin"] = { fg = s.keyword }
   h["@tag.attribute"] = { fg = s.property, italic = true }
-  h["@tag.delimiter"] = { fg = c.muted }
+  h["@tag.delimiter"] = { fg = c.punct }
   h["@markup.heading"] = { fg = c.accent, bold = true }
   h["@markup.strong"] = { bold = true }
   h["@markup.italic"] = { italic = true }
@@ -243,7 +243,7 @@ function M.build(c, opts)
   h.SnacksPickerPreviewTitle = { fg = c.bg, bg = c.accent2, bold = true }
   h.SnacksPickerInputBorder = { fg = c.accent_soft, bg = c.float }
   h.SnacksPickerPrompt = { fg = c.accent, bg = c.float }
-  h.SnacksPickerMatch = { fg = c.accent, bold = true }
+  h.SnacksPickerMatch = { fg = c.accent_hi, bold = true }
   h.SnacksPickerListCursorLine = { bg = c.accent_bg }
   h.SnacksPickerCursorLine = { bg = c.accent_bg }
   h.SnacksPickerDir = { fg = c.muted }
@@ -296,7 +296,7 @@ function M.build(c, opts)
   h.BlinkCmpMenuBorder = { link = "FloatBorder" }
   h.BlinkCmpMenuSelection = { link = "PmenuSel" }
   h.BlinkCmpLabel = { fg = c.fg }
-  h.BlinkCmpLabelMatch = { fg = c.accent, bold = true }
+  h.BlinkCmpLabelMatch = { fg = c.accent_hi, bold = true }
   h.BlinkCmpLabelDetail = { fg = c.muted }
   h.BlinkCmpLabelDescription = { fg = c.muted }
   h.BlinkCmpLabelDeprecated = { fg = c.fg_dim, strikethrough = true }
@@ -311,6 +311,42 @@ function M.build(c, opts)
   h.BlinkCmpSignatureHelpActiveParameter = { link = "LspSignatureActiveParameter" }
   h.BlinkCmpScrollBarThumb = { bg = c.border }
   h.BlinkCmpScrollBarGutter = { bg = c.float }
+
+  -- noice.nvim: command line popup (top center) and its completion menu.
+  -- Each kind of command line gets its own edge color; the edge is a soft tone
+  -- of the kind's color, the icon and title the full color.
+  local soft = function(col)
+    return require("noctis.theme.tokens").blend(col, c.bg, 0.55)
+  end
+  h.NoiceCmdline = { link = "MsgArea" } -- the bottom line used by / and ?
+  h.NoiceCmdlinePrompt = { fg = c.accent, bold = true }
+  h.NoiceCmdlinePopup = { fg = c.fg, bg = c.float }
+  h.NoiceCmdlinePopupBorder = { fg = c.accent_soft, bg = c.float }
+  h.NoiceCmdlinePopupTitle = { fg = c.accent, bg = c.float, bold = true }
+  h.NoiceCmdlineIcon = { fg = c.accent }
+  local kinds = {
+    Cmdline = c.accent,
+    Input = c.accent,
+    Search = c.warning,
+    Lua = c.accent2,
+    Filter = c.success,
+    Help = s.type,
+    Calculator = s.number,
+  }
+  for kind, col in pairs(kinds) do
+    h["NoiceCmdlineIcon" .. kind] = { fg = col }
+    h["NoiceCmdlinePopupBorder" .. kind] = { fg = col == c.accent and c.accent_soft or soft(col), bg = c.float }
+    h["NoiceCmdlinePopupTitle" .. kind] = { fg = col, bg = c.float, bold = true }
+  end
+  h.NoicePopupmenu = { link = "Pmenu" }
+  h.NoicePopupmenuBorder = { link = "FloatBorder" }
+  h.NoicePopupmenuSelected = { link = "PmenuSel" }
+  h.NoicePopupmenuMatch = { link = "PmenuMatch" }
+  h.NoiceScrollbar = { link = "PmenuSbar" }
+  h.NoiceScrollbarThumb = { link = "PmenuThumb" }
+  h.NoiceConfirm = { link = "NormalFloat" }
+  h.NoiceConfirmBorder = { fg = c.accent_soft, bg = c.float }
+  h.NoiceCompletionItemKindDefault = { fg = c.accent2 }
 
   h.LazyNormal = { link = "NormalFloat" }
   h.LazyH1 = { fg = c.bg, bg = c.accent, bold = true }
@@ -374,6 +410,7 @@ function M.build(c, opts)
   h.NoctisStInfo = { fg = c.info, bg = stbg }
   h.NoctisStHint = { fg = c.hint, bg = stbg }
   h.NoctisStAI = { fg = c.accent2, bg = stbg, bold = true }
+  h.NoctisStKeys = { fg = c.accent2, bg = stbg, bold = true } -- pending keys (showcmd)
   h.NoctisStConflict = { fg = c.bg, bg = c.error, bold = true }
   h.NoctisStBadge = { fg = c.bg, bg = c.warning, bold = true }
   h.NoctisStSep = { fg = c.border, bg = stbg }
@@ -393,6 +430,39 @@ function M.build(c, opts)
   h.NoctisPaletteGroup = { fg = c.accent2 }
   h.NoctisPaletteDesc = { fg = c.muted }
   h.NoctisPaletteUnavailable = { fg = c.fg_dim, italic = true }
+  h.NoctisPaletteRecent = { fg = c.fg_dim, italic = true }
+
+  -- Command group glyphs (palette, dashboard): a small set of hues from the
+  -- syntax palette so groups are told apart at a glance.
+  local group_colors = {
+    AI = c.accent2,
+    Buffer = s.type,
+    Code = s.func,
+    Diagnostics = c.warning,
+    File = c.accent,
+    General = c.accent,
+    Git = s.number,
+    Interface = s.special,
+    Project = s.type,
+    QuitSession = s.special,
+    SearchReplace = c.warning,
+    Terminal = c.success,
+    Window = s.type,
+  }
+  for name, col in pairs(group_colors) do
+    h["NoctisGroup" .. name] = { fg = col }
+  end
+
+  -- mini.icons (file icons in the explorer, pickers and dashboard)
+  h.MiniIconsAzure = { fg = s.func }
+  h.MiniIconsBlue = { fg = s.type }
+  h.MiniIconsCyan = { fg = c.accent2 }
+  h.MiniIconsGreen = { fg = c.success }
+  h.MiniIconsGrey = { fg = c.muted }
+  h.MiniIconsOrange = { fg = s.number }
+  h.MiniIconsPurple = { fg = s.keyword }
+  h.MiniIconsRed = { fg = c.error }
+  h.MiniIconsYellow = { fg = c.warning }
 
   -- AI Workbench and change review
   h.NoctisAIHeader = { fg = c.fg, bg = c.panel, bold = true }
@@ -423,6 +493,14 @@ end
 --- 16-color ANSI palette for the integrated terminal
 function M.terminal_colors(c)
   local s = c.syntax
+  if c.background == "light" then
+    -- Light terminals keep "black" dark and "white" a readable grey (as GitHub
+    -- Light and Solarized Light do), so text a program prints in white stays visible.
+    return {
+      c.fg, c.error, c.success, c.warning, s.type, c.accent, c.accent2, c.muted,
+      c.fg_subtle, c.error, c.success, c.warning, s.type, c.accent, c.accent2, c.fg_dim,
+    }
+  end
   return {
     c.panel, c.error, c.success, c.warning, s.type, c.accent, c.accent2, c.fg_subtle,
     c.fg_dim, c.error, c.success, c.warning, s.type, c.accent, c.accent2, c.fg,

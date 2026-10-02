@@ -1,2 +1,2 @@
 -- :colorscheme amber
-require("noctis.theme").apply("amber")
+require("noctis.theme").load("amber")

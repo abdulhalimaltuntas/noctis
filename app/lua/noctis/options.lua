@@ -74,6 +74,9 @@ function M.setup()
 
   o.laststatus = 3
   o.showmode = false
+  -- Pending keys (d2, "a, …) show in the statusline: the last row stays the
+  -- message area, and nothing is left behind there when `:` opens the popup.
+  o.showcmdloc = "statusline"
   o.showtabline = 2
   o.cmdheight = 1
   o.pumheight = 12

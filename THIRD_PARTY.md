@@ -17,6 +17,8 @@ commits in `app/lazy-lock.json`, and are distributed under their own licenses.
 | conform.nvim | 016802d | MIT | https://github.com/stevearc/conform.nvim |
 | mason.nvim | 2a6940a | Apache-2.0 | https://github.com/mason-org/mason.nvim |
 | mini.icons | f642e3b | MIT | https://github.com/nvim-mini/mini.icons |
+| noice.nvim | 7bfd942 | Apache-2.0 | https://github.com/folke/noice.nvim |
+| nui.nvim | 10fc361 | MIT | https://github.com/MunifTanjim/nui.nvim |
 
 Optional external tools (installed by the user; NOCTIS doesn't distribute them):
 ripgrep, git, lazygit, the tree-sitter CLI, language servers and formatters

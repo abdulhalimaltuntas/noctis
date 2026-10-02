@@ -27,7 +27,7 @@ return {
         picker = {
           enabled = true,
           ui_select = true,
-          prompt = icons.enabled() and " " or "> ",
+          prompt = icons.enabled() and " " or "> ",
           icons = not icons.enabled() and ascii_icons() or nil,
           layout = {
             cycle = true,

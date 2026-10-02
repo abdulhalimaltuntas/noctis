@@ -32,6 +32,8 @@ or OpenCode on the same screen while watching every file change they make, live.
 | ![Editor](docs/screenshots/editor.png) | ![AI Workbench](docs/screenshots/ai-workbench.png) |
 | **Change list** | **Side-by-side diff** |
 | ![Changes](docs/screenshots/ai-changes.png) | ![Diff](docs/screenshots/diff-side-by-side.png) |
+| **Command line at the top center** | **Daybreak (light) theme** |
+| ![Command line popup](docs/screenshots/cmdline-popup.png) | ![Daybreak](docs/screenshots/theme-daybreak.png) |
 | **Glacier theme** | **Amber theme** |
 | ![Glacier](docs/screenshots/theme-glacier.png) | ![Amber](docs/screenshots/theme-amber.png) |
 
@@ -44,10 +46,18 @@ not design mockups. How: [`tests/visual/`](tests/visual/). More images:
 - **Command palette** (`Space Space`): search any command by name, description
   or key. Commands that can't run right now are shown with the reason. The
   palette, keymaps, which-key help and the [keymap reference](docs/KEYMAPS.md)
-  are all generated from a single command registry.
-- **Midnight Violet** theme plus **Glacier** and **Amber** variants built from
-  the same design tokens; 256-color fallback when truecolor is missing; fully
-  usable without a Nerd Font.
+  are all generated from a single command registry. Recently used commands
+  come first.
+- **Command line in a popup** at the top center, with the completion menu
+  right under it (as in LazyVim). Each kind of command line has its own icon,
+  title and edge color (command, shell, Lua, help, calculator); `/` and `?`
+  searches stay on the bottom line. `ui.cmdline = "classic"` keeps Neovim's
+  own command line.
+- **Midnight Violet** theme plus **Glacier**, **Amber** and the light
+  **Daybreak** variant, all built from the same design tokens. Every theme is
+  checked against WCAG contrast floors in the tests and in `:checkhealth`;
+  256-color fallback when truecolor is missing; fully usable without a Nerd
+  Font.
 - **Typing animation**: each character you type glows briefly in the accent
   color and fades out (~240 ms). Only the background is animated, so syntax
   colors stay intact. Skipped for pastes, macros and big files; toggle with
@@ -175,7 +185,7 @@ touch this file. All options: [`app/examples/config.lua`](app/examples/config.lu
 
 ```lua
 return {
-  theme = "glacier",                 -- midnight-violet | glacier | amber
+  theme = "glacier",                 -- midnight-violet | glacier | amber | daybreak
   icons = false,                     -- no Nerd Font
   ui = { typing_animation = false }, -- turn the typing glow off
   format_on_save = { enabled = true, filetypes = { "python", "lua" } },
