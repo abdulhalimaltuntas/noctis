@@ -336,7 +336,7 @@ function T:flush_notify()
   if require("noctis.ai.review").visible_for(self.root) then
     return -- the change list is already open
   end
-  U.info(("Changes detected in %d files (%d in the interval). Review: Space a d"):format(n, total), { id = "noctis_ai_changes" })
+  U.info(("Changes detected in %s (%d in the interval). Review: Space a d"):format(U.plural(n, "file"), total), { id = "noctis_ai_changes" })
 end
 
 --- Reconcile: compares the file list and the known signatures (asynchronous).
@@ -498,10 +498,10 @@ function M.capture(root, cb)
     M.by_root[root] = t
     local s = iv.stats
     U.info(
-      ("Baseline ready: content of %d files recorded (%s), %d files out of scope%s · %d ms"):format(
-        s.captured,
+      ("Baseline ready: content of %s recorded (%s), %s out of scope%s · %d ms"):format(
+        U.plural(s.captured, "file"),
         U.human_size(s.bytes),
-        s.skipped,
+        U.plural(s.skipped, "file"),
         s.limit_hit and (" · limit: " .. s.limit_hit) or "",
         s.ms
       ),

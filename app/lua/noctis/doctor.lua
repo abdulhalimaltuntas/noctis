@@ -103,9 +103,9 @@ function M.checks()
     if missing == #names then
       add("error", "Plugins are not installed. The editor opens in basic mode.", brand.command .. " --setup (needs network)")
     elseif missing > 0 then
-      add("warn", missing .. " plugins missing", brand.command .. " --setup")
+      add("warn", require("noctis.util").plural(missing, "plugin") .. " missing", brand.command .. " --setup")
     else
-      add("ok", ("%d plugins installed%s"):format(#names, drift == 0 and ", matching the lockfile" or ""))
+      add("ok", ("%s installed%s"):format(require("noctis.util").plural(#names, "plugin"), drift == 0 and ", matching the lockfile" or ""))
     end
   end
 

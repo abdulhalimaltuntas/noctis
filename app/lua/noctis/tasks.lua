@@ -91,7 +91,7 @@ local function project_tasks(r)
   local out = {}
   for _, t in ipairs(data) do
     if type(t) == "table" and type(t.name) == "string" and (type(t.cmd) == "table" or type(t.cmd) == "string") then
-      out[#out + 1] = { name = t.name, cmd = t.cmd, cwd = t.cwd and (r .. "/" .. t.cwd) or nil, source = "proje" }
+      out[#out + 1] = { name = t.name, cmd = t.cmd, cwd = t.cwd and (r .. "/" .. t.cwd) or nil, source = "project" }
     end
   end
   return out
@@ -102,7 +102,7 @@ function M.list()
   local out = {}
   for _, t in ipairs(require("noctis.config").options.tasks or {}) do
     if type(t) == "table" and t.name and t.cmd then
-      out[#out + 1] = { name = t.name, cmd = t.cmd, cwd = t.cwd, source = "ayar" }
+      out[#out + 1] = { name = t.name, cmd = t.cmd, cwd = t.cwd, source = "config" }
     end
   end
   vim.list_extend(out, project_tasks(r))

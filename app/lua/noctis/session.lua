@@ -63,7 +63,7 @@ function M.save(opts)
   local cur = api.nvim_buf_get_name(0)
   U.json_write(path_for(root), { root = root, layout = layout, files = files, current = cur, at = os.time() })
   if opts and opts.notify then
-    U.info(("Session saved (%d files)."):format(#files))
+    U.info(("Session saved (%s)."):format(U.plural(#files, "file")))
   end
 end
 
@@ -133,7 +133,7 @@ function M.restore()
   elseif data.current and vim.uv.fs_stat(data.current) then
     open_file(data.current)
   end
-  U.info(("Session restored (%d files%s)."):format(#data.files - missing, missing > 0 and (", " .. missing .. " no longer exist") or ""))
+  U.info(("Session restored (%s%s)."):format(U.plural(#data.files - missing, "file"), missing > 0 and (", " .. missing .. " no longer exist") or ""))
 end
 
 function M.setup()

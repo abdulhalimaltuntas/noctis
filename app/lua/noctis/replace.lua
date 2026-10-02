@@ -130,9 +130,9 @@ function M.apply(changes)
     total, skipped = total + a, skipped + s
   end
   if skipped > 0 then
-    U.warn(("%d changes applied, %d lines skipped (changed after the preview)."):format(total, skipped))
+    U.warn(("%s applied, %s skipped (changed after the preview)."):format(U.plural(total, "change"), U.plural(skipped, "line")))
   else
-    U.info(("%d changes applied to %d files. In open buffers you can undo with u."):format(total, #order))
+    U.info(("%s applied to %s. In open buffers you can undo with u."):format(U.plural(total, "change"), U.plural(#order, "file")))
   end
 end
 
@@ -196,7 +196,7 @@ function M.preview(q)
     return
   end
   if #changes > M.MAX then
-    U.warn(("%d matches; for safety at most %d changes are previewed. Narrow the search (glob)."):format(#changes, M.MAX))
+    U.warn(("%s; for safety at most %d changes are previewed. Narrow the search (glob)."):format(U.plural(#changes, "match", "matches"), M.MAX))
     return
   end
   vim.cmd("tabnew")
@@ -268,7 +268,7 @@ function M.preview(q)
       U.info("No changes selected.")
       return
     end
-    local msg = ("Apply %d changes to %d files. Continue?"):format(n, vim.tbl_count(files))
+    local msg = ("Apply %s to %s. Continue?"):format(U.plural(n, "change"), U.plural(vim.tbl_count(files), "file"))
     if vim.fn.confirm(msg, "&Apply\n&Cancel", 2) == 1 then
       M.apply(st.changes)
       vim.cmd("tabclose")

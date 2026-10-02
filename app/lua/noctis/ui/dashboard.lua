@@ -287,7 +287,9 @@ function M.open(opts)
     foldcolumn = "0",
     statuscolumn = "",
   }) do
-    vim.wo[win][opt] = val
+    -- :setlocal semantics: the next buffer shown in this window gets the
+    -- global values back (line numbers, sign column, ...) instead of the dashboard's.
+    api.nvim_set_option_value(opt, val, { scope = "local", win = win })
   end
   local map = function(lhs, fn)
     vim.keymap.set("n", lhs, fn, { buffer = buf, nowait = true, silent = true })

@@ -131,7 +131,6 @@ done
 export NOCTIS_HOME
 # Keep the user's own NVIM_APPNAME: terminals and AI sessions inside NOCTIS
 # restore it, so an `nvim` started there uses the right configuration.
-# yapılandırmayı kullanır.
 if [ -n "${NVIM_APPNAME+x}" ]; then
   export NOCTIS_ORIG_NVIM_APPNAME="$NVIM_APPNAME"
 else

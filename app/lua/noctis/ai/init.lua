@@ -185,7 +185,7 @@ function M.new_interval()
   local root = M.view_root()
   local t = tracker().get(root)
   local msg = t
-      and ("Close the active review interval and take a new baseline?\nNo files are changed; the current %d changes won't appear in the new interval (the old record is kept for the retention period)."):format(vim.tbl_count(t.changes))
+      and ("Close the active review interval and take a new baseline?\nNo files are changed; the current %s won't appear in the new interval (the old record is kept for the retention period)."):format(U.plural(vim.tbl_count(t.changes), "change"))
     or "Take a new baseline for this project? (no files are changed)"
   if vim.fn.confirm(msg, "&Yes\n&No", 2) ~= 1 then
     return
@@ -286,7 +286,7 @@ function M.scope_info()
     "",
     ("Project: %s"):format(vim.fn.fnamemodify(root, ":~")),
     ("Baseline: %s · method: %s"):format(os.date("%Y-%m-%d %H:%M:%S", iv.created_at), iv.method or "?"),
-    ("Content recorded: %d files (%s) · out of scope: %d · took: %d ms"):format(s.captured or 0, U.human_size(s.bytes or 0), s.skipped or 0, s.ms or 0),
+    ("Content recorded: %s (%s) · out of scope: %d · took: %d ms"):format(U.plural(s.captured or 0, "file"), U.human_size(s.bytes or 0), s.skipped or 0, s.ms or 0),
     s.limit_hit and ("Limit: " .. s.limit_hit) or "No limits were exceeded.",
     ("Limits: %s per file · %s total · at most %d files"):format(U.human_size(cfg.baseline.max_file_size), U.human_size(cfg.baseline.max_total_size), cfg.baseline.max_files),
     ("Watched directories: %d%s"):format(t.watcher:count(), t.watcher.overflow and " (limit exceeded; the rest are scanned periodically)" or ""),

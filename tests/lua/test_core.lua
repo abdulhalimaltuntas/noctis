@@ -16,6 +16,16 @@ H.test("startup launches no AI tool or job", function()
   H.eq(jobs, 0, "no running job/process")
 end)
 
+H.test("leaving the dashboard gives the window its editor options back", function()
+  require("noctis.ui.dashboard").open({ force = true })
+  H.eq(vim.wo.number, false, "dashboard hides line numbers")
+  vim.cmd("enew")
+  H.eq(vim.wo.number, true, "line numbers back")
+  H.eq(vim.wo.signcolumn, "yes", "sign column back")
+  H.eq(vim.wo.cursorline, true, "cursorline back")
+  vim.cmd("bwipeout!")
+end)
+
 -- ── Configuration ────────────────────────────────────────────────────────
 H.suite("Configuration validation")
 local cfg = require("noctis.config")

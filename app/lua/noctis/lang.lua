@@ -235,7 +235,7 @@ function M.install(name)
   end, p.parsers)
   local can_ts = U.has("tree-sitter") and (U.has("cc") or U.has("gcc") or U.has("clang"))
   if #parsers > 0 then
-    summary[#summary + 1] = "Tree-sitter: " .. table.concat(parsers, ", ") .. (can_ts and "" or " (atlanacak: tree-sitter CLI veya C derleyici yok)")
+    summary[#summary + 1] = "Tree-sitter: " .. table.concat(parsers, ", ") .. (can_ts and "" or " (will be skipped: no tree-sitter CLI or C compiler)")
   end
   if #summary == 0 then
     U.info(p.label .. ": all components are already installed.")

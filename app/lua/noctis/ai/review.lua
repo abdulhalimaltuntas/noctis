@@ -202,7 +202,7 @@ function M.render()
     add("Changes detected in this interval — which program wrote them is not verified.", "NoctisDim")
     if iv.git and iv.git.head and iv.git.head ~= "" then
       local pre = #(iv.git.entries or {})
-      add(("Git: %s @ %s · %d files were already modified/untracked at the baseline (they don't count as new changes)"):format(iv.git.branch or "?", iv.git.head:sub(1, 7), pre), "NoctisDim")
+      add(("Git: %s @ %s · %s already modified/untracked at the baseline (not counted as new changes)"):format(iv.git.branch or "?", iv.git.head:sub(1, 7), U.plural(pre, "file")), "NoctisDim")
     end
     local running = require("noctis.ai.sessions").running(t.root)
     if #running > 1 then
@@ -238,9 +238,9 @@ function M.render()
     add("")
     local s = iv.stats or {}
     add(
-      ("Scope: content of %d files recorded · %d files out of scope%s · Space a i: details"):format(
-        s.captured or 0,
-        s.skipped or 0,
+      ("Scope: content of %s recorded · %s out of scope%s · Space a i: details"):format(
+        U.plural(s.captured or 0, "file"),
+        U.plural(s.skipped or 0, "file"),
         s.limit_hit and (" · limit: " .. s.limit_hit) or ""
       ),
       "NoctisDim"
@@ -310,7 +310,7 @@ local function backup(t, rel, cur)
     return
   end
   local name = vim.fn.fnamemodify(rel, ":t")
-  local path = ("%s/%s.%s.geri-alma-oncesi"):format(U.state_dir("recovered"), name, os.date("%Y%m%d-%H%M%S"))
+  local path = ("%s/%s.%s.before-revert"):format(U.state_dir("recovered"), name, os.date("%Y%m%d-%H%M%S"))
   U.write_file(path, cur, 384)
   U.log("INFO", "kept the content before the revert: " .. path)
 end
@@ -535,7 +535,7 @@ function M.side_by_side(t, rel)
     vim.fn.bufload(right_buf)
     vim.bo[right_buf].buflisted = true
   else
-    right_buf = M.scratch({ "(dosya silindi)" }, "")
+    right_buf = M.scratch({ "(file deleted)" }, "")
   end
   -- New windows inherit the current window's local options; open from the
   -- editor window, not from the panel (Workbench).

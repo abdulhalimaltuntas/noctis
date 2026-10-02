@@ -186,6 +186,11 @@ function M.debounce(ms, fn)
   end, timer
 end
 
+--- "1 file", "3 files" (plural defaults to word .. "s")
+function M.plural(n, word, plural)
+  return ("%d %s"):format(n, n == 1 and word or (plural or word .. "s"))
+end
+
 function M.human_size(n)
   if n < 1024 then
     return n .. " B"

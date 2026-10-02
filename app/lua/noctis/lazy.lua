@@ -115,7 +115,7 @@ function M.setup()
         end
         if #missing > 0 then
           table.sort(missing)
-          U.warn(("%d plugins are not installed: %s\nTo install: noctis --setup"):format(#missing, table.concat(missing, ", ")))
+          U.warn(("%s not installed: %s\nTo install: noctis --setup"):format(U.plural(#missing, "plugin"), table.concat(missing, ", ")))
         end
       end,
     })

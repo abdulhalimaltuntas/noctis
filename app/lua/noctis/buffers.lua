@@ -87,7 +87,7 @@ function M.delete_others()
     end
   end
   if kept > 0 then
-    U.info(("%d buffers left open (unsaved or running a process)."):format(kept))
+    U.info(("%s left open (unsaved or running a process)."):format(U.plural(kept, "buffer")))
   end
 end
 
