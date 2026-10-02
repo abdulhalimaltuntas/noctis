@@ -1,0 +1,5 @@
+# Yerel test/geliştirme çıktıları
+/.test-home/
+/tests/.tmp/
+*.swp
+.DS_Store

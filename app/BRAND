@@ -1,0 +1,8 @@
+# NOCTIS ürün kimliği — tek kaynak.
+# Launcher (bash), kurulum scriptleri ve Lua katmanı bu dosyayı okur.
+# Ürünü yeniden adlandırmak için burayı değiştirin ve yeniden kurun.
+NAME=NOCTIS
+COMMAND=noctis
+APPNAME=noctis
+VERSION=0.1.0
+MIN_NVIM=0.12.0

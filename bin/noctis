@@ -1,0 +1,164 @@
+#!/usr/bin/env bash
+# NOCTIS launcher — Neovim tabanlı terminal kodlama ortamı.
+#
+# Wrapper bayrakları yalnızca ilk `--` öncesinde ve birebir yazıldığında
+# tanınır; geri kalan her argüman Neovim'e değiştirilmeden aktarılır.
+# Editör `exec` ile başlatılır: çalışma klasörü korunur, çıkış kodu iletilir.
+set -u
+
+# @NOCTIS_HOME@  (kurulum scripti bu satırın altına sabit yol yazar)
+
+die() {
+  printf '%s: %s\n' "${CMD_NAME:-noctis}" "$1" >&2
+  exit "${2:-1}"
+}
+
+resolve_self() {
+  local src="${BASH_SOURCE[0]}"
+  while [ -L "$src" ]; do
+    local dir
+    dir="$(cd -P "$(dirname "$src")" && pwd)"
+    src="$(readlink "$src")"
+    case "$src" in /*) ;; *) src="$dir/$src" ;; esac
+  done
+  cd -P "$(dirname "$src")" && pwd
+}
+
+if [ -z "${NOCTIS_HOME:-}" ]; then
+  self_dir="$(resolve_self)"
+  if [ -f "$self_dir/../app/init.lua" ]; then
+    NOCTIS_HOME="$(cd "$self_dir/../app" && pwd)"
+  else
+    NOCTIS_HOME="${XDG_DATA_HOME:-$HOME/.local/share}/noctis/app"
+  fi
+fi
+
+[ -f "$NOCTIS_HOME/init.lua" ] || die "uygulama dosyaları bulunamadı: $NOCTIS_HOME (kurulumu tekrar çalıştırın veya NOCTIS_HOME ayarlayın)" 2
+
+# BRAND dosyasını kaynak olarak çalıştırmadan, satır satır oku.
+BRAND_NAME="NOCTIS"; CMD_NAME="noctis"; APP_NAME="noctis"; APP_VERSION="0.0.0"; MIN_NVIM="0.12.0"
+if [ -f "$NOCTIS_HOME/BRAND" ]; then
+  while IFS='=' read -r key value; do
+    case "$key" in
+      NAME) BRAND_NAME="$value" ;;
+      COMMAND) CMD_NAME="$value" ;;
+      APPNAME) APP_NAME="$value" ;;
+      VERSION) APP_VERSION="$value" ;;
+      MIN_NVIM) MIN_NVIM="$value" ;;
+    esac
+  done < <(grep -E '^[A-Z_]+=' "$NOCTIS_HOME/BRAND")
+fi
+
+NVIM_BIN="${NOCTIS_NVIM:-}"
+if [ -z "$NVIM_BIN" ]; then
+  NVIM_BIN="$(command -v nvim 2>/dev/null || true)"
+fi
+
+usage() {
+  cat <<EOF
+$BRAND_NAME $APP_VERSION — Neovim tabanlı terminal kodlama ortamı
+
+Kullanım:
+  $CMD_NAME [seçenekler] [dosya|klasör ...]
+  $CMD_NAME +42 src/main.py        Dosyayı 42. satırda aç
+  $CMD_NAME -- -tireli-dosya.txt   '--' sonrası her şey dosya adıdır
+
+$BRAND_NAME seçenekleri (yalnızca '--' öncesinde):
+  --doctor     Kurulum, bağımlılık, terminal ve AI profil kontrolü (AI aracı başlatmaz)
+  --safe       Üçüncü taraf eklentiler ve indirmeler olmadan temel düzenleme
+  --setup      Eklentileri kilit dosyasındaki sürümlerle indir/kur (ağ gerekir)
+  --version    Sürüm bilgisi
+  -h, --help   Bu yardım
+
+Diğer tüm argümanlar Neovim'e değiştirilmeden aktarılır.
+Ortam değişkenleri: NOCTIS_NVIM (nvim yolu), NOCTIS_HOME (uygulama dizini)
+EOF
+}
+
+version_ge() {
+  # version_ge A B  -> A >= B (x.y.z)
+  local IFS=.
+  local -a a=($1) b=($2)
+  local i
+  for i in 0 1 2; do
+    local x="${a[$i]:-0}" y="${b[$i]:-0}"
+    x="${x%%[!0-9]*}"; y="${y%%[!0-9]*}"
+    x="${x:-0}"; y="${y:-0}"
+    if [ "$x" -gt "$y" ]; then return 0; fi
+    if [ "$x" -lt "$y" ]; then return 1; fi
+  done
+  return 0
+}
+
+check_nvim() {
+  if [ -z "$NVIM_BIN" ] || [ ! -x "$NVIM_BIN" ]; then
+    cat >&2 <<EOF
+$CMD_NAME: Neovim bulunamadı (gerekli: >= $MIN_NVIM).
+  Linux:  https://github.com/neovim/neovim/releases adresinden nvim-linux-x86_64.tar.gz
+          indirip PATH'e ekleyin (dağıtım paketleri genellikle eskidir).
+  macOS:  brew install neovim
+  Başka bir yol için: NOCTIS_NVIM=/yol/nvim $CMD_NAME
+EOF
+    exit 127
+  fi
+  local v
+  v="$("$NVIM_BIN" --version 2>/dev/null | head -n1 | sed -E 's/^NVIM v([0-9]+\.[0-9]+\.[0-9]+).*/\1/')"
+  if ! version_ge "$v" "$MIN_NVIM"; then
+    die "Neovim $v çok eski; en az $MIN_NVIM gerekli ($NVIM_BIN)" 3
+  fi
+}
+
+mode="edit"
+safe=0
+declare -a pass=()
+seen_sep=0
+for arg in "$@"; do
+  if [ "$seen_sep" -eq 1 ]; then
+    pass+=("$arg")
+    continue
+  fi
+  case "$arg" in
+    --) seen_sep=1; pass+=("$arg") ;;
+    --doctor) mode="doctor" ;;
+    --safe) safe=1 ;;
+    --setup) mode="setup" ;;
+    --version) mode="version" ;;
+    -h|--help) mode="help" ;;
+    *) pass+=("$arg") ;;
+  esac
+done
+
+export NOCTIS_HOME
+# Kullanıcının kendi NVIM_APPNAME değerini sakla: NOCTIS içindeki terminal ve
+# AI oturumları bu değeri geri yükler, böylece orada çalışan `nvim` doğru
+# yapılandırmayı kullanır.
+if [ -n "${NVIM_APPNAME+x}" ]; then
+  export NOCTIS_ORIG_NVIM_APPNAME="$NVIM_APPNAME"
+else
+  unset NOCTIS_ORIG_NVIM_APPNAME
+fi
+export NVIM_APPNAME="$APP_NAME"
+unset NOCTIS_SAFE NOCTIS_SETUP
+
+case "$mode" in
+  help) usage; exit 0 ;;
+  version)
+    printf '%s %s\n' "$BRAND_NAME" "$APP_VERSION"
+    if [ -n "$NVIM_BIN" ] && [ -x "$NVIM_BIN" ]; then "$NVIM_BIN" --version | head -n1; fi
+    exit 0 ;;
+  doctor)
+    check_nvim
+    # Doctor eklentilere bağımlı değildir: -l ile yalnız Lua betiği çalışır.
+    exec "$NVIM_BIN" --headless -l "$NOCTIS_HOME/lua/noctis/doctor.lua" ;;
+  setup)
+    check_nvim
+    export NOCTIS_SETUP=1
+    exec "$NVIM_BIN" --headless -u "$NOCTIS_HOME/init.lua" \
+      "+lua require('noctis.setup').run()" ;;
+esac
+
+check_nvim
+if [ "$safe" -eq 1 ]; then
+  export NOCTIS_SAFE=1
+fi
+exec "$NVIM_BIN" -u "$NOCTIS_HOME/init.lua" "${pass[@]+"${pass[@]}"}"
