@@ -1,0 +1,7 @@
+NOCTIS
+Copyright 2026 Abdulhalim Altuntaş
+
+This product is licensed under the Apache License, Version 2.0 (see LICENSE).
+
+Plugins installed by `noctis --setup` are downloaded from their own
+repositories and are distributed under their own licenses; see THIRD_PARTY.md.

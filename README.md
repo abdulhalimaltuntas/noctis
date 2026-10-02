@@ -12,6 +12,7 @@
   <img alt="Neovim 0.12+" src="https://img.shields.io/badge/Neovim-0.12%2B-8A5CF6?logo=neovim&logoColor=white">
   <img alt="Tested on Linux" src="https://img.shields.io/badge/tested-Linux%20x86__64-5CC8FF">
   <img alt="Status: early" src="https://img.shields.io/badge/status-early-B794F6">
+  <img alt="License: Apache-2.0" src="https://img.shields.io/badge/license-Apache--2.0-67E8F9">
 </p>
 
 Open a project, find a file, write, see errors, run commands in a terminal,
@@ -275,6 +276,7 @@ AI service.
 - [Verification and compatibility](docs/COMPATIBILITY.md)
 - [Performance measurement](docs/PERFORMANCE.md)
 - [Keymaps and commands](docs/KEYMAPS.md)
+- [Changelog](CHANGELOG.md)
 - [Third-party components and licenses](THIRD_PARTY.md)
 
 ## Contributors
@@ -307,7 +309,7 @@ run `tests/run.sh` before sending a pull request.
 trademark. The name, command and `NVIM_APPNAME` are defined in a single file:
 [`app/BRAND`](app/BRAND).
 
-No license has been chosen yet for NOCTIS's own source code; that decision
-belongs to the repository owner. Plugins are downloaded from their own
-repositories at install time and are distributed under their own licenses
-(Apache-2.0 / MIT): [THIRD_PARTY.md](THIRD_PARTY.md).
+Copyright 2026 Abdulhalim Altuntaş. NOCTIS is licensed under the
+[Apache License 2.0](LICENSE) (see also [NOTICE](NOTICE)). Plugins are
+downloaded from their own repositories at install time and are distributed
+under their own licenses (Apache-2.0 / MIT): [THIRD_PARTY.md](THIRD_PARTY.md).
