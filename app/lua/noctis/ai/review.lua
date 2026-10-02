@@ -160,7 +160,7 @@ local function git_lines(root)
   end
   for _, it in ipairs(items) do
     local ns_ = numstat[it.path]
-    local stat = ns_ and ("+" .. ns_[1] .. " −" .. ns_[2]) or (it.x == "?" and "izlenmiyor" or "")
+    local stat = ns_ and ("+" .. ns_[1] .. " −" .. ns_[2]) or (it.x == "?" and "untracked" or "")
     lines[#lines + 1] = ("  %s%s  %-48s %s"):format(it.x, it.y, it.path, stat)
     meta[#lines] = { git = true, path = top .. "/" .. it.path }
   end
@@ -191,8 +191,42 @@ function M.render()
     add("")
     add("Enter: Git diff · g: back to the review interval · q: hide", "NoctisDim")
   elseif not t then
-    add("No review interval.", "NoctisAccent")
-    add("Start an AI session (Space a n); the baseline is recorded automatically.", "NoctisMuted")
+    -- First open: explain the review model in one screen. Keys come from the
+    -- registry, so user overrides show up here too.
+    local R = require("noctis.registry")
+    local function key(id)
+      local c = R.by_id[id]
+      local k = c and R.effective_keys(c)
+      return k and R.pretty_keys(k) or nil
+    end
+    add("AI change review", "NoctisAccent")
+    add("Every file an AI tool writes is tracked here, shown as a diff and reversible.", "NoctisMuted")
+    add("")
+    local steps = {
+      { "Start an AI tool", key("ai.new"), "The project's on-disk content is recorded first: the baseline." },
+      { "Let it work", nil, "Each file it writes appears here: A added · M modified · D deleted." },
+      { "Review", "Enter", "Opens the diff against the baseline; r marks a file reviewed." },
+      { "Keep or revert", "u · X in the diff", "Revert a whole file, or a single hunk." },
+    }
+    for i, st in ipairs(steps) do
+      local num, title = ("  %d  "):format(i), st[1]
+      local text = num .. title .. (st[2] and ("  ·  " .. st[2]) or "")
+      add(text)
+      local row = #lines - 1
+      hls[#hls + 1] = { row, "NoctisAccent", 2, 3 }
+      hls[#hls + 1] = { row, "NoctisBold", #num, #num + #title }
+      if st[2] then
+        hls[#hls + 1] = { row, "NoctisPaletteKey", #text - #st[2], #text }
+      end
+      add("     " .. st[3], "NoctisMuted")
+    end
+    add("")
+    add("A revert is refused while your own buffer has unsaved edits; the replaced content", "NoctisDim")
+    add("is copied to the recovery folder first.", "NoctisDim")
+    local cp = key("ai.checkpoint")
+    if cp then
+      add(("Later, %s starts a fresh interval from the current state."):format(cp), "NoctisDim")
+    end
   else
     local iv = t.interval
     local win = vim.fn.bufwinid(buf)
@@ -434,7 +468,7 @@ function M.unified(t, rel, win)
   local body, meta = hunks.unified(base or "", cur, hk, 3)
   local k = KIND[ch.kind]
   local header = {
-    ("%s  %s  ·  %s  ·  %d hunk%s"):format(k[1], rel, k[3], #hk, t:is_reviewed(rel) and "  ·  ✓ reviewed" or ""),
+    ("%s  %s  ·  %s  ·  %s%s"):format(k[1], rel, k[3], U.plural(#hk, "hunk"), t:is_reviewed(rel) and "  ·  ✓ reviewed" or ""),
     "]h/[h: hunk · X: revert hunk · U: revert file · m: reviewed · o: open file · q: back to the list",
     "",
   }

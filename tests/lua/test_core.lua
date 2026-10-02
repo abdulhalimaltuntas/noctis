@@ -643,4 +643,22 @@ H.test("with icons on, dashboard actions and palette rows carry their group glyp
   H.eq(select(1, icons.group("File")), "", "no glyph column without icons")
 end)
 
+H.test("before the first AI session the Changes view explains the review flow, with live keys", function()
+  local review = require("noctis.ai.review")
+  review.set_root(nil)
+  local buf = review.ensure_list_buf()
+  review.render()
+  local text = table.concat(vim.api.nvim_buf_get_lines(buf, 0, -1, false), "\n")
+  H.ok(text:find("AI change review", 1, true), "title")
+  H.ok(text:find("Start an AI tool  ·  Space a n", 1, true), "key from the registry")
+  H.ok(text:find("recovery folder", 1, true), "revert safety is stated")
+  local cfg = require("noctis.config").options
+  cfg.keymaps["ai.new"] = "<leader>aN"
+  review.render()
+  text = table.concat(vim.api.nvim_buf_get_lines(buf, 0, -1, false), "\n")
+  H.ok(text:find("Space a N", 1, true), "user override shown")
+  cfg.keymaps["ai.new"] = nil
+  vim.api.nvim_buf_delete(buf, { force = true })
+end)
+
 H.done()
