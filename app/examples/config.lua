@@ -31,6 +31,7 @@ return {
     -- explorer_width = 30, -- 16..80
     -- wrap = false,
     -- typing_animation = true, -- typed characters glow briefly (Space u a)
+    -- cmdline = "popup", -- ":" opens a popup at the top center; "classic" keeps the bottom line
   },
 
   diagnostics = {

@@ -249,6 +249,10 @@ H.test("statusline and tabline render without errors (narrow and wide)", functio
   local long = root .. "/" .. string.rep("a_very_long_file_name_", 6) .. ".py"
   H.write(long, "x = 1\n")
   vim.cmd("edit " .. vim.fn.fnameescape(long))
+  -- Restore the width afterwards: with no UI attached, Neovim keeps the
+  -- tabline click table at the startup width, and a UI attached later (noice's
+  -- vim.ui_attach) would draw past it (heap corruption in stl_fill_click_defs).
+  local cols0 = vim.o.columns
   for _, cols in ipairs({ 60, 80, 120, 200 }) do
     vim.o.columns = cols
     local s = require("noctis.ui.statusline").render()
@@ -260,7 +264,46 @@ H.test("statusline and tabline render without errors (narrow and wide)", functio
     local tvis = vim.api.nvim_eval_statusline(t, { maxwidth = cols, use_tabline = true }).width
     H.ok(tvis <= cols, ("tabline %d > %d"):format(tvis, cols))
   end
-  vim.o.columns = 120
+  vim.o.columns = cols0
+end)
+
+H.test("the command line is a popup at the top center (noice); completion menu lists names only", function()
+  require("lazy").load({ plugins = { "noice.nvim" } })
+  -- noice finishes its setup on the next event-loop tick
+  H.wait(3000, function()
+    return require("noice.config").options.cmdline ~= nil and require("noice.ui")._attached
+  end, "noice set up")
+  local cfg = require("noice.config").options
+  H.eq(cfg.cmdline.view, "cmdline_popup")
+  H.eq(cfg.views.cmdline_popup.position.row, 3, "command_palette preset: near the top")
+  H.eq(cfg.views.cmdline_popup.position.col, "50%", "centered")
+  H.eq(cfg.cmdline.format.search_down.view, "cmdline", "bottom_search preset: / stays at the bottom")
+  H.eq(cfg.messages.enabled, false, "messages keep Neovim's message area")
+  H.eq(cfg.notify.enabled, false, "vim.notify stays with snacks")
+  H.ok(require("noice.ui")._attached, "noice attached to the command line")
+  -- styled from the theme, in every variant
+  local theme = require("noctis.theme")
+  for _, name in ipairs({ "midnight-violet", "daybreak" }) do
+    theme.apply(name)
+    local border = api.nvim_get_hl(0, { name = "NoiceCmdlinePopupBorder", link = false })
+    H.eq(("#%06X"):format(border.fg), theme.tokens.accent_soft, name .. " border")
+    H.ok(api.nvim_get_hl(0, { name = "NoiceCmdlineIconLua", link = false }).fg, name .. " lua icon")
+  end
+  theme.apply("midnight-violet")
+  -- blink's command line menu: names only (resolved NOCTIS spec options)
+  local blink = require("lazy.core.config").plugins["blink.cmp"]
+  local cols = require("lazy.core.plugin").values(blink, "opts", false).cmdline.completion.menu.draw.columns
+  H.eq(#cols, 1)
+  H.eq(cols[1][1], "label")
+end)
+
+H.test("ui.cmdline = 'classic' keeps Neovim's command line", function()
+  local spec = require("lazy.core.config").plugins["noice.nvim"]
+  local opts = require("noctis.config").options
+  opts.ui.cmdline = "classic"
+  H.eq(spec.cond(), false)
+  opts.ui.cmdline = "popup"
+  H.eq(spec.cond(), true)
 end)
 
 H.done()

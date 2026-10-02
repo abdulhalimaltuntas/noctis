@@ -47,7 +47,7 @@ end
 
 local function width_of(parts)
   -- Visible width, excluding items such as %#Group# and %<
-  local s = table.concat(parts):gsub("%%#[^#]*#", ""):gsub("%%%%", "%%"):gsub("%%<", "")
+  local s = table.concat(parts):gsub("%%#[^#]*#", ""):gsub("%%%(%%S  %%%)", ""):gsub("%%%%", "%%"):gsub("%%<", "")
   return vim.fn.strdisplaywidth(s)
 end
 
@@ -217,7 +217,11 @@ function M.render()
       .. hl("NoctisStDim", cols >= 90 and ("/%d"):format(api.nvim_buf_line_count(buf)) or "")
   end
 
-  local right_s = table.concat(right, sep) .. hl("NoctisStText", " ")
+  -- Pending keys ('showcmdloc' = statusline). The %(…%) group disappears while
+  -- nothing is pending; a highlight inside it would keep it, so it goes first.
+  -- Not in command-line mode: the `:` that opened it would linger there.
+  local keys = api.nvim_get_mode().mode:sub(1, 1) ~= "c" and hl("NoctisStKeys", "%(%S  %)") or ""
+  local right_s = keys .. table.concat(right, sep) .. hl("NoctisStText", " ")
   local avail = cols - width_of(left) - width_of({ right_s }) - 2
   left[#left + 1] = file_part(buf, avail - 2)
 

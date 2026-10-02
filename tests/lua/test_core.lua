@@ -681,4 +681,22 @@ H.test("before the first AI session the Changes view explains the review flow, w
   vim.api.nvim_buf_delete(buf, { force = true })
 end)
 
+H.test("pending keys show in the statusline and vanish when nothing is pending", function()
+  H.eq(vim.o.showcmdloc, "statusline")
+  local st = require("noctis.ui.statusline").render()
+  H.ok(st:find("%(%S  %)", 1, true), "showcmd group present")
+  local out = vim.api.nvim_eval_statusline(st, {}).str
+  H.ok(not out:find("│%s*│"), "no empty separator pair")
+  -- In command-line mode the `:` that opened it must not linger in the bar
+  local in_cmdline
+  vim.keymap.set("c", "<F30>", function()
+    in_cmdline = require("noctis.ui.statusline").render()
+    return ""
+  end, { expr = true })
+  vim.api.nvim_feedkeys(vim.keycode(":<F30><C-c>"), "tx", false)
+  vim.keymap.del("c", "<F30>")
+  H.ok(in_cmdline, "rendered from command-line mode")
+  H.ok(not in_cmdline:find("%S", 1, true), "no pending-keys item in command-line mode")
+end)
+
 H.done()

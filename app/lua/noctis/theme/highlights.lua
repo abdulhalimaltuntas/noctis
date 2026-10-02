@@ -312,6 +312,42 @@ function M.build(c, opts)
   h.BlinkCmpScrollBarThumb = { bg = c.border }
   h.BlinkCmpScrollBarGutter = { bg = c.float }
 
+  -- noice.nvim: command line popup (top center) and its completion menu.
+  -- Each kind of command line gets its own edge color; the edge is a soft tone
+  -- of the kind's color, the icon and title the full color.
+  local soft = function(col)
+    return require("noctis.theme.tokens").blend(col, c.bg, 0.55)
+  end
+  h.NoiceCmdline = { link = "MsgArea" } -- the bottom line used by / and ?
+  h.NoiceCmdlinePrompt = { fg = c.accent, bold = true }
+  h.NoiceCmdlinePopup = { fg = c.fg, bg = c.float }
+  h.NoiceCmdlinePopupBorder = { fg = c.accent_soft, bg = c.float }
+  h.NoiceCmdlinePopupTitle = { fg = c.accent, bg = c.float, bold = true }
+  h.NoiceCmdlineIcon = { fg = c.accent }
+  local kinds = {
+    Cmdline = c.accent,
+    Input = c.accent,
+    Search = c.warning,
+    Lua = c.accent2,
+    Filter = c.success,
+    Help = s.type,
+    Calculator = s.number,
+  }
+  for kind, col in pairs(kinds) do
+    h["NoiceCmdlineIcon" .. kind] = { fg = col }
+    h["NoiceCmdlinePopupBorder" .. kind] = { fg = col == c.accent and c.accent_soft or soft(col), bg = c.float }
+    h["NoiceCmdlinePopupTitle" .. kind] = { fg = col, bg = c.float, bold = true }
+  end
+  h.NoicePopupmenu = { link = "Pmenu" }
+  h.NoicePopupmenuBorder = { link = "FloatBorder" }
+  h.NoicePopupmenuSelected = { link = "PmenuSel" }
+  h.NoicePopupmenuMatch = { link = "PmenuMatch" }
+  h.NoiceScrollbar = { link = "PmenuSbar" }
+  h.NoiceScrollbarThumb = { link = "PmenuThumb" }
+  h.NoiceConfirm = { link = "NormalFloat" }
+  h.NoiceConfirmBorder = { fg = c.accent_soft, bg = c.float }
+  h.NoiceCompletionItemKindDefault = { fg = c.accent2 }
+
   h.LazyNormal = { link = "NormalFloat" }
   h.LazyH1 = { fg = c.bg, bg = c.accent, bold = true }
   h.LazyButton = { fg = c.fg, bg = c.cursorline }
@@ -374,6 +410,7 @@ function M.build(c, opts)
   h.NoctisStInfo = { fg = c.info, bg = stbg }
   h.NoctisStHint = { fg = c.hint, bg = stbg }
   h.NoctisStAI = { fg = c.accent2, bg = stbg, bold = true }
+  h.NoctisStKeys = { fg = c.accent2, bg = stbg, bold = true } -- pending keys (showcmd)
   h.NoctisStConflict = { fg = c.bg, bg = c.error, bold = true }
   h.NoctisStBadge = { fg = c.bg, bg = c.warning, bold = true }
   h.NoctisStSep = { fg = c.border, bg = stbg }

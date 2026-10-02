@@ -17,6 +17,7 @@ M.defaults = {
     explorer_width = 30,
     wrap = false,
     typing_animation = true, -- brief glow behind typed characters (needs truecolor)
+    cmdline = "popup", -- "popup" (top center, as in LazyVim) | "classic" (Neovim's bottom line)
   },
   diagnostics = {
     virtual_text = true,
@@ -67,6 +68,7 @@ local enums = {
   borders = { "rounded", "single", "ascii" },
   clipboard = { "auto", "system", "internal" },
   ["ai.layout"] = { "auto", "right", "bottom", "full" },
+  ["ui.cmdline"] = { "popup", "classic" },
 }
 local special = {
   truecolor = function(v)
