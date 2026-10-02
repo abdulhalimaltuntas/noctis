@@ -37,7 +37,7 @@ start() {
   mkdir -p "$X/c/noctis" "$X/s/noctis/noctis" "$X/x"
   [ -n "$config" ] && printf '%s\n' "$config" > "$X/c/noctis/config.lua"
   # The tour only shows in the first-launch scene
-  if [ "$name" != "01-dashboard" ]; then
+  if [ "$name" != "dashboard" ]; then
     printf '{"onboarding_done":true}' > "$X/s/noctis/noctis/ui.json"
   fi
   tm new-session -d -s main -x "$cols" -y "$rows" -c "$DEMO" \
@@ -72,60 +72,60 @@ SCENES=("$@")
 want() { [ ${#SCENES[@]} -eq 0 ] || [[ " ${SCENES[*]} " == *" $1 "* ]]; }
 set --
 
-if want 01-dashboard; then
-  start 01-dashboard 120 35
-  shot 01-dashboard
+if want dashboard; then
+  start dashboard 120 35
+  shot dashboard
 fi
 
-if want 02-editor; then
-  start 02-editor 120 35 "" "$REPO/bin/noctis app/main.py"
+if want editor; then
+  start editor 120 35 "" "$REPO/bin/noctis app/main.py"
   keys " " "e"; sleep 0.8
   keys C-l; keys 18G; keys "w"
-  shot 02-editor
+  shot editor
 fi
 
-if want 03-palette; then
-  start 03-palette 120 35 "" "$REPO/bin/noctis app/main.py"
+if want command-palette; then
+  start command-palette 120 35 "" "$REPO/bin/noctis app/main.py"
   keys " " " "; sleep 0.5
   lit "find"
-  shot 03-palette
+  shot command-palette
 fi
 
-if want 04-whichkey; then
-  start 04-whichkey 120 35 "" "$REPO/bin/noctis app/main.py"
+if want which-key; then
+  start which-key 120 35 "" "$REPO/bin/noctis app/main.py"
   tm send-keys -t main " "; sleep 1.2
-  shot 04-whichkey
+  shot which-key
 fi
 
-if want 05-ai-workbench; then
+if want ai-workbench; then
   reset_demo
-  start 05-ai-workbench 170 45 "return { $FAKE_PROFILE }" "$REPO/bin/noctis app/utils.py"
+  start ai-workbench 170 45 "return { $FAKE_PROFILE }" "$REPO/bin/noctis app/utils.py"
   keys " " "a" "n"; sleep 0.8
   lit "Test"; keys Enter; sleep 2.5
   lit "color"; keys Enter
   lit "replace app/utils.py .2f .1f"; keys Enter
   lit "write app/report.py def report():\\n    return 'ready'\\n"; keys Enter
   sleep 1.5
-  shot 05-ai-workbench
+  shot ai-workbench
 fi
 
-if want 06-ai-changes; then
+if want ai-changes; then
   # Continues the session from 05 (the interval changes are visible)
   keys C-\\ e; sleep 0.4
   keys " " "a" "d"; sleep 1
-  shot 06-ai-changes
+  shot ai-changes
 fi
 
-if want 07-diff-side; then
+if want diff-side-by-side; then
   keys Down Down Down Down; sleep 0.3
   tm send-keys -t main "/utils" Enter; sleep 0.4
   keys Enter; sleep 1.2
-  shot 07-diff-side
+  shot diff-side-by-side
 fi
 
-if want 08-diff-unified; then
+if want diff-unified; then
   reset_demo
-  start 08-diff-unified 100 32 "return { $FAKE_PROFILE }" "$REPO/bin/noctis app/utils.py"
+  start diff-unified 100 32 "return { $FAKE_PROFILE }" "$REPO/bin/noctis app/utils.py"
   keys " " "a" "n"; sleep 0.8
   lit "Test"; keys Enter; sleep 2.5
   lit "replace app/utils.py .2f .1f"; keys Enter; sleep 1.5
@@ -133,37 +133,37 @@ if want 08-diff-unified; then
   keys " " "a" "d"; sleep 1
   tm send-keys -t main "/utils" Enter; sleep 0.4
   keys Enter; sleep 1
-  shot 08-diff-unified
+  shot diff-unified
 fi
 
-if want 09-small; then
-  start 09-small 80 24 "" "$REPO/bin/noctis app/main.py"
+if want small-terminal; then
+  start small-terminal 80 24 "" "$REPO/bin/noctis app/main.py"
   keys 12G
-  shot 09-small
+  shot small-terminal
 fi
 
-if want 10-glacier; then
-  start 10-glacier 120 35 "return { theme = 'glacier' }" "$REPO/bin/noctis app/main.py"
+if want theme-glacier; then
+  start theme-glacier 120 35 "return { theme = 'glacier' }" "$REPO/bin/noctis app/main.py"
   keys " " "e"; sleep 0.8; keys C-l
-  shot 10-glacier "#0a141b" "#d9e8f1"
+  shot theme-glacier "#0a141b" "#d9e8f1"
 fi
 
-if want 11-amber; then
-  start 11-amber 120 35 "return { theme = 'amber' }" "$REPO/bin/noctis app/main.py"
+if want theme-amber; then
+  start theme-amber 120 35 "return { theme = 'amber' }" "$REPO/bin/noctis app/main.py"
   keys " " "e"; sleep 0.8; keys C-l
-  shot 11-amber "#14100b" "#ede3d3"
+  shot theme-amber "#14100b" "#ede3d3"
 fi
 
-if want 12-plain; then
-  start 12-plain 100 30 "return { icons = false, borders = 'ascii' }" "$REPO/bin/noctis app/main.py"
+if want no-icons-ascii; then
+  start no-icons-ascii 100 30 "return { icons = false, borders = 'ascii' }" "$REPO/bin/noctis app/main.py"
   keys " " " "; sleep 0.5; lit "theme"
-  shot 12-plain
+  shot no-icons-ascii
 fi
 
 # AI change marks (A/M/D) and Git status in the explorer
-if want 16-explorer-marks; then
+if want explorer-ai-marks; then
   reset_demo
-  start 16-explorer-marks 150 40 "return { $FAKE_PROFILE }" "$REPO/bin/noctis app/main.py"
+  start explorer-ai-marks 150 40 "return { $FAKE_PROFILE }" "$REPO/bin/noctis app/main.py"
   keys " " "a" "n"; sleep 0.8
   lit "Test"; keys Enter; sleep 2.5
   lit "replace app/utils.py .2f .1f"; keys Enter
@@ -172,23 +172,23 @@ if want 16-explorer-marks; then
   keys C-\\ e; sleep 0.4
   keys " " "e"; sleep 1.5
   tm send-keys -t main ":redraw! | echo ''" Enter; sleep 0.5
-  shot 16-explorer-marks
+  shot explorer-ai-marks
   reset_demo
 fi
 
 # Real Claude Code (if installed): terminal compatibility only. No prompt is
 # sent; no paid task is started. Ctrl-C goes to the tool itself.
-if want 13-claude-code && command -v claude >/dev/null 2>&1; then
+if want claude-code && command -v claude >/dev/null 2>&1; then
   reset_demo
-  start 13-claude-code 160 45 "" "$REPO/bin/noctis app/main.py"
+  start claude-code 160 45 "" "$REPO/bin/noctis app/main.py"
   keys " " "a" "n"; sleep 0.8
   lit "Claude"; keys Enter; sleep 7
-  shot 13-claude-code
+  shot claude-code
   tm resize-window -t main -x 120 -y 35; sleep 2
-  shot 14-claude-code-resized
+  shot claude-code-resized
   tm send-keys -t main C-c; sleep 0.8; tm send-keys -t main C-c; sleep 2
   keys C-\\ e; sleep 0.4
-  shot 15-claude-code-exit
+  shot claude-code-exit
   reset_demo
 fi
 

@@ -29,7 +29,7 @@ Date: 2026-10-02.
 
 | Tool | Version | Status |
 | --- | --- | --- |
-| Claude Code | 2.1.287 | ✅ Launch/first-run screen, colors, resizing and keeping insert mode observed in a PTY (images 13–15). No prompt was sent; login and the file-writing flow were not verified in this environment |
+| Claude Code | 2.1.287 | ✅ Launch/first-run screen, colors, resizing and keeping insert mode observed in a PTY (`claude-code*.png`). No prompt was sent; login and the file-writing flow were not verified in this environment |
 | Codex CLI | — | ⚪ Not installed; not verified. Flags verified from the official source |
 | Kimi Code | — | ⚪ Not installed; not verified. Flags verified from the official docs |
 | Test CLI | 1.0 | ✅ End to end (kinds of file writes, Ctrl-C/SIGINT, exit code, keeps running while hidden) |
@@ -53,12 +53,12 @@ Date: 2026-10-02.
 | 5 | A file changed externally is never silently overwritten | ✅ | `test_core`, `test_ai` |
 | 6 | Search jumps to the right file/line; bulk replace previews first | ✅ | `test_plugins` (grep → line 3), `test_core` (preview, exclusion, CRLF, regex) |
 | 7 | Completion, diagnostics, go to definition and rename in at least one language | ✅ | `test_lsp` (pyright) |
-| 8 | The terminal works; hide/show keeps the process and output; back to the editor | ✅ | `test_core`; `Ctrl-\ e` in a real PTY (image 15) |
+| 8 | The terminal works; hide/show keeps the process and output; back to the editor | ✅ | `test_core`; `Ctrl-\ e` in a real PTY (`claude-code-exit.png`) |
 | 9 | Git signs match the real diff; a folder without Git is fine | ✅ | `test_plugins` (gitsigns ↔ `git diff --numstat`) |
-| 10 | Small/large size, resizing, long names, no icons | ✅ | `test_plugins` (no overflow at 60–200 columns, long name), images 09, 12, 14 |
+| 10 | Small/large size, resizing, long names, no icons | ✅ | `test_plugins` (no overflow at 60–200 columns, long name), `small-terminal.png`, `no-icons-ascii.png`, `claude-code-resized.png` |
 | 11 | No network, missing `rg`/language server, `--safe` | ✅ | `test_safe` (two modes), `launcher_test` |
 | 12 | Reinstall keeps settings; uninstall stays within bounds | ✅ | `tests/install_test.sh` |
-| 13 | AI profiles in separate PTYs, the right root; hide/switch/resize/focus | ✅ | `test_ai` (PTY + fake CLI), `test_plugins` (focus), real Claude Code (13–15) |
+| 13 | AI profiles in separate PTYs, the right root; hide/switch/resize/focus | ✅ | `test_ai` (PTY + fake CLI), `test_plugins` (focus), real Claude Code (`claude-code*.png`) |
 | 14 | Pre-baseline staged/unstaged/untracked kept; Git ↔ interval separate; index unchanged | ✅ | `test_ai` (index bytes compared) |
 | 15 | Normal writes, atomic saves, create/delete, subfolders; clean buffers update; project without Git | ✅ | `test_ai` |
 | 16 | Unsaved edit + AI change: both contents kept | ✅ | `test_ai` (conflict, 3-way merge), `test_core` (deleted file) |

@@ -10,7 +10,7 @@ account, login flow, permissions and network behavior. NOCTIS stores no API
 keys, doesn't change tool permissions, never sends source code or terminal
 transcripts to an external service, and never starts an AI tool on its own.
 
-![AI Workbench](screenshots/05-ai-workbench.png)
+![AI Workbench](screenshots/ai-workbench.png)
 
 ## Quick start
 

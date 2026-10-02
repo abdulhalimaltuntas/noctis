@@ -24,13 +24,15 @@ Kimi Code on the same screen while watching every file change they make, live.
 > command system, install tooling and the AI Workbench on top. It is inspired
 > by LazyVim's terminal-first approach but contains none of LazyVim's code.
 
-![Dashboard](docs/screenshots/01-dashboard.png)
+![Dashboard](docs/screenshots/dashboard.png)
 
 | Editor + explorer | AI Workbench (real PTY) |
 | --- | --- |
-| ![Editor](docs/screenshots/02-editor.png) | ![AI Workbench](docs/screenshots/05-ai-workbench.png) |
+| ![Editor](docs/screenshots/editor.png) | ![AI Workbench](docs/screenshots/ai-workbench.png) |
 | **Change list** | **Side-by-side diff** |
-| ![Changes](docs/screenshots/06-ai-changes.png) | ![Diff](docs/screenshots/07-diff-side.png) |
+| ![Changes](docs/screenshots/ai-changes.png) | ![Diff](docs/screenshots/diff-side-by-side.png) |
+| **Glacier theme** | **Amber theme** |
+| ![Glacier](docs/screenshots/theme-glacier.png) | ![Amber](docs/screenshots/theme-amber.png) |
 
 Every image is captured from NOCTIS running in a real PTY (tmux) — these are
 not design mockups. How: [`tests/visual/`](tests/visual/). More images:
