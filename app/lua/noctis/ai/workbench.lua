@@ -90,7 +90,9 @@ function M.winbar()
   }
   local running = root and #sessions.running(root) or 0
   if running > 1 then
-    parts[#parts + 1] = { text = " ⚠ " .. running .. " araç aynı ağaçta", hl = "NoctisWarning", drop = 2 }
+    -- Güvenlik uyarısı düşürülmez; dar alanda kısa biçim kullanılır
+    local warn = width >= 110 and (" ⚠ " .. running .. " araç aynı ağaçta") or (" ⚠" .. running .. " araç")
+    parts[#parts + 1] = { text = warn, hl = "NoctisWarning", drop = 0 }
   end
   if root then
     parts[#parts + 1] = { text = " " .. vim.fn.fnamemodify(root, ":~") .. " ", hl = "NoctisAIPath", right = true, drop = 5 }

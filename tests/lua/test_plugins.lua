@@ -24,6 +24,22 @@ local function close_floats()
   end
 end
 
+-- Her test kayan pencere bırakmadan ve editör penceresinde başlasın
+local test = H.test
+H.test = function(name, fn)
+  test(name, function()
+    -- Önce picker'ları kendi API'leriyle kapat (pencereyi zorla kapatmak
+    -- snacks kaydında artık nesne bırakır), sonra kalan kayan pencereler
+    for _, pk in ipairs(require("snacks").picker.get()) do
+      pcall(pk.close, pk)
+    end
+    vim.wait(50)
+    close_floats()
+    require("noctis.ui.layout").focus_editor()
+    fn()
+  end)
+end
+
 local root = H.tmpdir("eklenti test")
 H.write(root .. "/src/app.py", "print('x')\n")
 H.write(root .. "/README.md", "# test\n")
@@ -140,12 +156,109 @@ H.test("AI Workbench paneli açılır/gizlenir; odak kendiliğinden alınmaz", f
   H.ok(not wb.is_visible(), "gizlendi")
 end)
 
+H.test("dosya picker'ı seçilen dosyayı açar", function()
+  vim.cmd("silent! %bwipeout!")
+  R.run("files.find")
+  local p
+  H.wait(3000, function()
+    local all = require("snacks").picker.get({ source = "files" })
+    p = all[#all]
+    return p ~= nil
+  end)
+  -- Bulucu (dosya listesi) bitmeden girilen filtre eşleştiriciyi tetiklemeyebilir
+  H.wait(5000, function()
+    return not p:is_active() and #p:items() > 0
+  end, "dosya listesi")
+  -- Kullanıcı yazınca snacks'ın TextChanged işleyicisinin yaptığını yap:
+  -- filtreyi ayarla ve eşleştiriciyi yeniden çalıştır
+  p.input:set("app.py")
+  p:find({ refresh = false })
+  H.wait(5000, function()
+    local cur = p:current()
+    return cur ~= nil and (cur.file or ""):match("app%.py$") ~= nil
+  end, "eşleşme · cwd=" .. tostring(p:cwd()) .. " filtre=" .. tostring(p.input.filter.pattern) .. " öğeler=" .. vim.inspect(vim.tbl_map(function(i)
+    return i.file
+  end, vim.list_slice(p:items(), 1, 5))))
+  p:action("confirm")
+  local function state()
+    local t = {}
+    for _, w in ipairs(api.nvim_list_wins()) do
+      t[#t + 1] = ("%d:%s:%s"):format(w, api.nvim_win_get_config(w).relative, api.nvim_buf_get_name(api.nvim_win_get_buf(w)))
+    end
+    return "cur=" .. api.nvim_get_current_win() .. " " .. table.concat(t, " | ")
+  end
+  H.wait(3000, function()
+    return vim.api.nvim_buf_get_name(0):match("src/app%.py$") ~= nil
+  end, "dosya açıldı · " .. state())
+  close_floats()
+end)
+
+H.test("projede arama sonucu doğru dosya ve satıra götürür", function()
+  H.write(root .. "/src/derin.py", "a = 1\nb = 2\nHEDEF_SATIR = 3\n")
+  R.run("files.grep")
+  local p
+  H.wait(3000, function()
+    local all = require("snacks").picker.get({ source = "grep" })
+    p = all[#all]
+    return p ~= nil
+  end)
+  p.input:set(nil, "HEDEF_SATIR") -- canlı arama: metin search alanına
+  p:find()
+  H.wait(8000, function()
+    local cur = p:current()
+    return cur ~= nil and (cur.file or ""):match("derin%.py$") ~= nil
+  end, "arama sonucu")
+  p:action("confirm")
+  H.wait(3000, function()
+    return vim.api.nvim_buf_get_name(0):match("derin%.py$") ~= nil
+  end, "dosya açıldı")
+  H.eq(api.nvim_win_get_cursor(0)[1], 3, "satır")
+  close_floats()
+end)
+
+H.test("Git işaretleri gerçek git diff ile tutarlı; Git olmayan klasör sorunsuz", function()
+  local g = H.tmpdir("git isaret")
+  H.init_repo(g)
+  H.write(g .. "/f.txt", "1\n2\n3\n4\n")
+  H.git(g, "add", ".")
+  H.git(g, "commit", "-q", "-m", "x")
+  H.write(g .. "/f.txt", "1\nIKI\n3\n4\nbeş\n")
+  vim.cmd("cd " .. vim.fn.fnameescape(g))
+  vim.cmd("edit f.txt")
+  local buf = api.nvim_get_current_buf()
+  H.wait(5000, function()
+    return vim.b[buf].gitsigns_status_dict ~= nil and (vim.b[buf].gitsigns_status_dict.added or 0) > 0
+  end, "gitsigns")
+  local d = vim.b[buf].gitsigns_status_dict
+  local numstat = H.git(g, "diff", "--numstat")
+  local a, del = numstat:match("^(%d+)%s+(%d+)")
+  -- gitsigns: değişen satır "changed" sayılır; git numstat ekleme+silme verir
+  H.eq(d.added + d.changed, tonumber(a), "eklenen/değişen satır")
+  H.eq(d.changed + d.removed, tonumber(del), "silinen/değişen satır")
+  local plain = H.tmpdir("gitsiz")
+  H.write(plain .. "/x.txt", "x\n")
+  vim.cmd("cd " .. vim.fn.fnameescape(plain))
+  vim.cmd("edit x.txt")
+  vim.wait(300)
+  H.eq(vim.b.gitsigns_status_dict, nil, "Git olmayan klasörde işaret yok")
+  H.ok(#require("noctis.ui.statusline").render() > 0)
+  vim.cmd("cd " .. vim.fn.fnameescape(root))
+end)
+
 H.test("statusline ve tabline hata vermeden çizilir (dar ve geniş)", function()
+  local long = root .. "/" .. string.rep("cok_uzun_dosya_adi_", 6) .. ".py"
+  H.write(long, "x = 1\n")
+  vim.cmd("edit " .. vim.fn.fnameescape(long))
   for _, cols in ipairs({ 60, 80, 120, 200 }) do
     vim.o.columns = cols
     local s = require("noctis.ui.statusline").render()
     local t = require("noctis.ui.tabline").render()
     H.ok(type(s) == "string" and type(t) == "string")
+    -- Görünür genişlik ekranı aşmamalı (%-öğeleri hariç)
+    local visible = vim.api.nvim_eval_statusline(s, { maxwidth = cols }).width
+    H.ok(visible <= cols, ("statusline %d > %d"):format(visible, cols))
+    local tvis = vim.api.nvim_eval_statusline(t, { maxwidth = cols, use_tabline = true }).width
+    H.ok(tvis <= cols, ("tabline %d > %d"):format(tvis, cols))
   end
   vim.o.columns = 120
 end)

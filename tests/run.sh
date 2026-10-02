@@ -27,6 +27,7 @@ run_suite() {
 }
 
 bash tests/launcher_test.sh || fail=1
+bash tests/install_test.sh || fail=1
 run_suite test_core.lua
 run_suite test_ai.lua
 run_suite test_safe.lua "" 1

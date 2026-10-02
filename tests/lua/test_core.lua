@@ -3,6 +3,19 @@ package.path = vim.env.NOCTIS_HOME .. "/../tests/lua/?.lua;" .. package.path
 local H = require("helpers")
 local api = vim.api
 
+H.suite("Açılış")
+H.test("açılış hiçbir AI aracı veya iş başlatmaz", function()
+  local s = package.loaded["noctis.ai.sessions"]
+  H.ok(s == nil or #s.list == 0, "AI oturumu yok")
+  local jobs = 0
+  for _, ch in ipairs(vim.api.nvim_list_chans()) do
+    if ch.stream == "job" then
+      jobs = jobs + 1
+    end
+  end
+  H.eq(jobs, 0, "çalışan iş/süreç yok")
+end)
+
 -- ── Yapılandırma ─────────────────────────────────────────────────────────
 H.suite("Yapılandırma doğrulama")
 local cfg = require("noctis.config")

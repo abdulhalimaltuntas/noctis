@@ -311,6 +311,33 @@ H.test("oturum proje kökünde başlar, çıktı kanıtıyla 'çalışıyor' olu
   H.eq(sessions.status_text(s), "çıktı (3)")
 end)
 
+H.test("aynı çalışma ağacında iki oturum: eşzamanlı yazma uyarısı görünür, kaynak atanmaz", function()
+  local profile = require("noctis.ai.profiles").get("fake")
+  local wb = require("noctis.ai.workbench")
+  local s1 = assert(sessions.start(profile, root, wb.prepare_window(), {}))
+  local s2 = assert(sessions.start(profile, root, wb.prepare_window(), {}))
+  H.wait(5000, function()
+    return s1.status == "running" and s2.status == "running"
+  end, "iki oturum")
+  H.eq(#sessions.running(root), 2)
+  review.set_root(root)
+  review.ensure_list_buf()
+  review.mode = "interval"
+  review.render()
+  local text = table.concat(api.nvim_buf_get_lines(review.list_buf, 0, -1, false), "\n")
+  H.ok(text:find("2 AI oturumu aynı çalışma ağacında", 1, true), "uyarı")
+  wb.current = s1.id
+  H.ok(wb.winbar():find("2 araç", 1, true), "panel uyarısı (dar alanda da düşürülmez)")
+  vim.fn.chansend(s1.job, "write ortak.txt bir\n")
+  wait_change(t, "ortak.txt", "added")
+  H.eq(t.changes["ortak.txt"].source, nil, "değişiklik bir oturuma atanmadı")
+  sessions.stop(s1)
+  sessions.stop(s2)
+  H.wait(5000, function()
+    return s1.status == "exited" and s2.status == "exited"
+  end)
+end)
+
 H.test("eksik executable editörü bozmaz; anlaşılır hata döner", function()
   local profile = require("noctis.ai.profiles").get("missing")
   local s, err = sessions.start(profile, root, require("noctis.ai.workbench").prepare_window(), {})
