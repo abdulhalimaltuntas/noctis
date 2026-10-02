@@ -154,21 +154,47 @@ function M.apply_keymaps()
 end
 
 --- Görünür adı için kısayolu biçimlendir: <leader>ff -> Space f f
+local special = {
+  leader = "Space",
+  space = "Space",
+  localleader = "\\",
+  cr = "Enter",
+  enter = "Enter",
+  esc = "Esc",
+  tab = "Tab",
+  bs = "Backspace",
+  up = "↑",
+  down = "↓",
+  left = "←",
+  right = "→",
+}
+
+--- Görünür ad için kısayolu biçimlendir: <leader>ff -> "Space f f",
+--- <leader><space> -> "Space Space", <C-s> -> "Ctrl+s"
 function M.pretty_keys(keys)
   if not keys then
     return ""
   end
-  local s = keys:gsub("<leader>", "Space "):gsub("<[Ll]ocalleader>", "\\ ")
-  s = s:gsub("<[Cc]%-(.-)>", "Ctrl+%1 "):gsub("<[Ss]%-(.-)>", "Shift+%1 "):gsub("<[MmAa]%-(.-)>", "Alt+%1 ")
-  s = s:gsub("<[Ss]pace>", "Space "):gsub("<[Ee]sc>", "Esc "):gsub("<[Cc][Rr]>", "Enter ")
-  -- Space'ten sonraki tuşları ayır: "Space ff" -> "Space f f"
-  s = s:gsub("^Space (%S+)", function(rest)
-    if rest:find("^[%w%?/%.]+$") then
-      return "Space " .. table.concat(vim.split(rest, ""), " ")
+  local tokens = {}
+  local i = 1
+  while i <= #keys do
+    local tok = keys:match("^<[^<>]+>", i)
+    if tok then
+      i = i + #tok
+      local inner = tok:sub(2, -2)
+      local mod, key = inner:match("^([CcSsMmAa])%-(.+)$")
+      if mod then
+        local name = ({ c = "Ctrl", s = "Shift", m = "Alt", a = "Alt" })[mod:lower()]
+        tokens[#tokens + 1] = name .. "+" .. (special[key:lower()] or key)
+      else
+        tokens[#tokens + 1] = special[inner:lower()] or inner
+      end
+    else
+      tokens[#tokens + 1] = keys:sub(i, i)
+      i = i + 1
     end
-    return "Space " .. rest
-  end)
-  return vim.trim(s:gsub("%s+", " "))
+  end
+  return table.concat(tokens, " ")
 end
 
 --- docs/KEYMAPS.md içeriğini üret
@@ -176,8 +202,8 @@ function M.markdown()
   local out = {
     "# NOCTIS kısayolları ve komutları",
     "",
-    "> Bu dosya `app/lua/noctis/commands.lua` içindeki komut kaydından üretilir:",
-    "> `noctis --headless` yerine `make docs` (veya `tests/gen-keymaps.sh`).",
+    "> Bu dosya `app/lua/noctis/commands.lua` içindeki komut kaydından üretilir",
+    "> (`tests/gen-keymaps.sh`). Elle düzenlemeyin; test paketi güncelliğini denetler.",
     "",
     "Tüm komutlar `Space Space` komut paletinden adıyla aranabilir. Tablo Normal mod içindir.",
     "",

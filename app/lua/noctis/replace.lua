@@ -12,7 +12,8 @@ local ns = api.nvim_create_namespace("noctis.replace")
 M.MAX = 5000
 
 local function rg_lines(args, r)
-  local res = vim.system(args, { cwd = r, text = true }):wait(60000)
+  -- text=false: vim.system'in "\r\n" normalizasyonu CRLF satırlarını bozardı
+  local res = vim.system(args, { cwd = r, text = false }):wait(60000)
   if res.code ~= 0 and res.code ~= 1 then
     return nil, vim.trim(res.stderr or "ripgrep hatası")
   end

@@ -26,7 +26,7 @@ local function serialize(node)
     end
     local buf = api.nvim_win_get_buf(win)
     local cur = api.nvim_win_get_cursor(win)
-    return { "leaf", file = api.nvim_buf_get_name(buf), line = cur[1], col = cur[2] }
+    return { type = "leaf", file = api.nvim_buf_get_name(buf), line = cur[1], col = cur[2] }
   end
   local children = {}
   for _, child in ipairs(node[2]) do
@@ -40,7 +40,7 @@ local function serialize(node)
   elseif #children == 1 then
     return children[1]
   end
-  return { kind, children = children }
+  return { type = kind, children = children }
 end
 
 ---@param opts? {notify?:boolean}
@@ -81,16 +81,22 @@ local function open_file(path)
 end
 
 local function build(node)
-  if node[1] == "leaf" then
-    if vim.uv.fs_stat(node.file) then
+  if type(node) ~= "table" then
+    return
+  end
+  if node.type == "leaf" then
+    if node.file and vim.uv.fs_stat(node.file) then
       open_file(node.file)
       pcall(api.nvim_win_set_cursor, 0, { node.line or 1, node.col or 0 })
     end
     return
   end
+  if type(node.children) ~= "table" then
+    return
+  end
   local wins = { api.nvim_get_current_win() }
   for i = 2, #node.children do
-    vim.cmd(node[1] == "row" and "rightbelow vsplit" or "rightbelow split")
+    vim.cmd(node.type == "row" and "rightbelow vsplit" or "rightbelow split")
     wins[i] = api.nvim_get_current_win()
   end
   for i, child in ipairs(node.children) do
