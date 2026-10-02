@@ -346,6 +346,7 @@ function M.build(c, opts)
   h.NoctisDashDesc = { fg = c.fg }
   h.NoctisDashPath = { fg = c.muted }
   h.NoctisDashEmpty = { fg = c.fg_dim, italic = true }
+  h.NoctisDashSel = { bg = c.accent_bg }
 
   -- Statusline
   local stbg = panel

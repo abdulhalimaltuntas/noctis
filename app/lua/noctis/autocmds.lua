@@ -71,14 +71,39 @@ function M.setup()
     end,
   })
 
-  -- Pencere boyutu değişince bölmeleri dengele ve yerleşimi uyarla
+  -- Pencere boyutu değişince bölmeleri dengele ve yerleşimi uyarla.
+  -- Odak ve mod korunur: terminal/AI aracı yazma modundaysa (Ctrl-C, Esc
+  -- uygulamaya gitmeli) yeniden boyutlandırmadan sonra da öyle kalır.
+  -- `tabdo` pencereler arasında dolaşıp terminal modunu bitirdiği için diğer
+  -- sekmeler ilk girişte dengelenir.
   api.nvim_create_autocmd("VimResized", {
     group = group,
     callback = function()
-      local tab = api.nvim_get_current_tabpage()
-      vim.cmd("tabdo wincmd =")
-      pcall(api.nvim_set_current_tabpage, tab)
+      local term_mode = vim.fn.mode() == "t"
+      local cur = api.nvim_get_current_tabpage()
+      for _, tp in ipairs(api.nvim_list_tabpages()) do
+        if tp ~= cur then
+          vim.t[tp].noctis_equalize = true
+        end
+      end
+      vim.cmd("wincmd =")
       api.nvim_exec_autocmds("User", { pattern = "NoctisResized", modeline = false })
+      if term_mode then
+        vim.schedule(function()
+          if vim.bo.buftype == "terminal" and vim.fn.mode() ~= "t" then
+            vim.cmd("startinsert")
+          end
+        end)
+      end
+    end,
+  })
+  api.nvim_create_autocmd("TabEnter", {
+    group = group,
+    callback = function()
+      if vim.t.noctis_equalize then
+        vim.t.noctis_equalize = nil
+        vim.cmd("wincmd =")
+      end
     end,
   })
 

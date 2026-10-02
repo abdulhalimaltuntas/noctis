@@ -70,7 +70,7 @@ function M.setup()
     change_detection = { enabled = false },
     rocks = { enabled = false },
     ui = {
-      border = icons.border_name():find(",") and "single" or icons.border_name(),
+      border = icons.border_opt(),
       title = " NOCTIS eklentileri ",
       icons = not icons.enabled() and {
         cmd = ":",

@@ -254,6 +254,7 @@ function M.diff_with_disk(buf)
   vim.cmd("diffthis")
   vim.cmd("leftabove vnew")
   local scratch = api.nvim_get_current_buf()
+  vim.bo[scratch].buflisted = false -- geçici buffer sekme çubuğunda görünmesin
   api.nvim_buf_set_lines(scratch, 0, -1, false, to_lines(text, vim.bo[buf].fileformat))
   vim.bo[scratch].buftype = "nofile"
   vim.bo[scratch].bufhidden = "wipe"

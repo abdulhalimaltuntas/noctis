@@ -51,6 +51,23 @@ local function width_of(parts)
   return vim.fn.strdisplaywidth(s)
 end
 
+-- Özel buffer'lar için okunur adlar
+local special_labels = {
+  ["noctis-dashboard"] = "Başlangıç",
+  ["noctis-changes"] = "AI · Değişiklikler",
+  ["noctis-diff"] = "AI · Diff",
+  ["noctis-replace"] = "Bul ve değiştir",
+  ["noctis-info"] = "Bilgi",
+  snacks_picker_list = "Gezgin",
+  snacks_picker_input = "Arama",
+  snacks_dashboard = "Başlangıç",
+  help = "Yardım",
+  checkhealth = "Sağlık kontrolü",
+  lazy = "Eklentiler",
+  mason = "Mason",
+  qf = "Quickfix",
+}
+
 local function file_part(buf, maxw)
   local name = api.nvim_buf_get_name(buf)
   local bt = vim.bo[buf].buftype
@@ -62,7 +79,7 @@ local function file_part(buf, maxw)
     if name == "" and bt == "" then
       return hl("NoctisStMuted", icons.get().file.unnamed)
     end
-    return hl("NoctisStMuted", esc(ft ~= "" and ft or bt))
+    return hl("NoctisStMuted", esc(special_labels[ft] or (ft ~= "" and ft or bt)))
   end
   local root = require("noctis.project").root()
   local rel = require("noctis.util").relpath(root, name) or vim.fn.fnamemodify(name, ":~")
@@ -194,9 +211,11 @@ function M.render()
       right[#right + 1] = hl("NoctisStMuted", esc(extra))
     end
   end
-  local cur = api.nvim_win_get_cursor(win)
-  right[#right + 1] = hl("NoctisStText", ("%d:%d"):format(cur[1], cur[2] + 1))
-    .. hl("NoctisStDim", cols >= 90 and ("/%d"):format(api.nvim_buf_line_count(buf)) or "")
+  if vim.bo[buf].buftype == "" then
+    local cur = api.nvim_win_get_cursor(win)
+    right[#right + 1] = hl("NoctisStText", ("%d:%d"):format(cur[1], cur[2] + 1))
+      .. hl("NoctisStDim", cols >= 90 and ("/%d"):format(api.nvim_buf_line_count(buf)) or "")
+  end
 
   local right_s = table.concat(right, sep) .. hl("NoctisStText", " ")
   local avail = cols - width_of(left) - width_of({ right_s }) - 2

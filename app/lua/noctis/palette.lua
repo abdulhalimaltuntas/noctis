@@ -19,16 +19,20 @@ local function build_items()
         keys = keys,
         ok = ok,
         reason = reason,
-        text = table.concat({ c.title, c.desc or "", c.group, keys, c.id }, " "),
+        -- Aranabilir: ad, kısayol, açıklama (grup adı aramayı kirletir; yalnız gösterilir)
+        text = table.concat({ c.title, keys, c.desc or "" }, "  "),
       }
     end
   end
-  -- Kullanılabilenler önce; sonra kayıt sırası
+  -- Kullanılabilenler önce; sonra kayıt sırası (table.sort kararlı değil: indeksle)
+  for i, it in ipairs(items) do
+    it.order = i
+  end
   table.sort(items, function(a, b)
     if a.ok ~= b.ok then
       return a.ok
     end
-    return false
+    return a.order < b.order
   end)
   return items
 end
@@ -64,7 +68,9 @@ function M.open()
       items = items,
       format = format,
       preview = "none",
-      matcher = { fuzzy = true, sort_empty = false },
+      matcher = { fuzzy = true, sort_empty = false, filename_bonus = false, frecency = false, cwd_bonus = false },
+      -- Eşit puanda kayıt sırası (anlamlı gruplama) korunur
+      sort = { fields = { "score:desc", "idx" } },
       layout = {
         preview = false,
         layout = {
@@ -73,7 +79,7 @@ function M.open()
           width = math.min(100, cols - 4),
           min_width = math.min(60, cols - 4),
           height = 0.55,
-          border = require("noctis.ui.icons").border_name():find(",") and "single" or "rounded",
+          border = require("noctis.ui.icons").border_opt(),
           box = "vertical",
           title = "{title}",
           title_pos = "center",

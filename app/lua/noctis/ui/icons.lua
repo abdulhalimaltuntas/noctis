@@ -91,6 +91,15 @@ function M.border()
   return { "+", "-", "+", "|", "+", "-", "+", "|" }
 end
 
+--- Eklenti seçenekleri için kenarlık: adlandırılmış stil veya ASCII'de 8'li tablo
+function M.border_opt()
+  local b = M.border_name()
+  if b:find(",") then
+    return M.border()
+  end
+  return b
+end
+
 function M.listchars()
   if limited_terminal() then
     return { tab = "> ", trail = "-", nbsp = "+" }

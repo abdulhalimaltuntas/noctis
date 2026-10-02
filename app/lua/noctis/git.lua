@@ -203,6 +203,7 @@ function M.diff_file()
   vim.wo.winbar = "%#NoctisAccent# ÇALIŞMA KOPYASI %#NoctisMuted# " .. rel
   vim.cmd("leftabove vnew")
   local scratch = api.nvim_get_current_buf()
+  vim.bo[scratch].buflisted = false -- geçici buffer sekme çubuğunda görünmesin
   api.nvim_buf_set_lines(scratch, 0, -1, false, lines)
   vim.bo[scratch].buftype = "nofile"
   vim.bo[scratch].bufhidden = "wipe"

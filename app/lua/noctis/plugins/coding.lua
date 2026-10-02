@@ -7,7 +7,7 @@ return {
     event = { "InsertEnter", "CmdlineEnter" },
     opts = function()
       local icons = require("noctis.ui.icons")
-      local border = icons.border_name():find(",") and "single" or icons.border_name()
+      local border = icons.border_opt()
       return {
         -- Menü kendiliğinden kodu değiştirmez: hiçbir öğe önceden seçili
         -- değildir ve seçim metni otomatik eklemez. Enter, yalnız bir öğe
@@ -89,7 +89,7 @@ return {
       return {
         PATH = "skip", -- PATH'e NOCTIS ekler (lang.setup_path), Mason yüklenmeden de
         ui = {
-          border = icons.border_name():find(",") and "single" or icons.border_name(),
+          border = icons.border_opt(),
           icons = icons.enabled() and nil or { package_installed = "+", package_pending = "~", package_uninstalled = "-" },
         },
       }

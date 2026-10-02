@@ -22,7 +22,7 @@ return {
     opts = function()
       local cfg = require("noctis.config").options
       local icons = require("noctis.ui.icons")
-      local border = icons.border_name():find(",") and "single" or icons.border_name()
+      local border = icons.border_opt()
       return {
         picker = {
           enabled = true,
@@ -47,6 +47,7 @@ return {
           },
           sources = {
             explorer = {
+              title = "Dosyalar",
               hidden = false,
               ignored = false,
               layout = { preset = "sidebar", preview = false, layout = { width = cfg.ui.explorer_width } },
@@ -68,10 +69,12 @@ return {
               },
               win = {
                 list = {
-                  wo = { winhighlight = "Normal:NoctisExplorer,NormalNC:NoctisExplorer,CursorLine:SnacksPickerListCursorLine,FloatBorder:NoctisExplorerBorder,WinSeparator:NoctisExplorerBorder" },
+                  wo = {
+                    winhighlight = "Normal:NoctisExplorer,NormalNC:NoctisExplorer,NormalFloat:NoctisExplorer,EndOfBuffer:NoctisExplorer,CursorLine:SnacksPickerListCursorLine,FloatBorder:NoctisExplorerBorder,WinSeparator:NoctisExplorerBorder",
+                  },
                 },
                 input = {
-                  wo = { winhighlight = "Normal:NoctisExplorer,NormalNC:NoctisExplorer,FloatBorder:NoctisExplorerBorder" },
+                  wo = { winhighlight = "Normal:NoctisExplorer,NormalNC:NoctisExplorer,NormalFloat:NoctisExplorer,FloatBorder:NoctisExplorerBorder" },
                 },
               },
             },

@@ -195,7 +195,10 @@ function M.render()
     add("Bir AI oturumu başlatın (Space a n); başlangıç kaydı otomatik alınır.", "NoctisMuted")
   else
     local iv = t.interval
-    add(("İnceleme aralığı · başlangıç %s · %s"):format(os.date("%d.%m %H:%M", iv.created_at), vim.fn.fnamemodify(t.root, ":~")), "NoctisAccent")
+    local win = vim.fn.bufwinid(buf)
+    local width = win ~= -1 and api.nvim_win_get_width(win) or 100
+    local head = ("İnceleme aralığı · başlangıç %s · "):format(os.date("%d.%m %H:%M", iv.created_at))
+    add(head .. U.shorten_path(vim.fn.fnamemodify(t.root, ":~"), math.max(16, width - vim.fn.strdisplaywidth(head) - 1)), "NoctisAccent")
     add("Bu aralıkta tespit edilen değişiklikler — hangi programın yazdığı doğrulanmaz.", "NoctisDim")
     if iv.git and iv.git.head and iv.git.head ~= "" then
       local pre = #(iv.git.entries or {})
@@ -263,6 +266,21 @@ function M.set_root(root)
 end
 
 -- ── Diff görünümleri ─────────────────────────────────────────────────────
+
+--- Listelenmeyen, salt okunur geçici buffer (sekme çubuğunda görünmez)
+function M.scratch(lines, ft)
+  local b = api.nvim_create_buf(false, true)
+  api.nvim_buf_set_lines(b, 0, -1, false, lines)
+  vim.bo[b].buftype = "nofile"
+  vim.bo[b].bufhidden = "wipe"
+  vim.bo[b].swapfile = false
+  vim.bo[b].modifiable = false
+  vim.bo[b].buflisted = false
+  if ft and ft ~= "" then
+    vim.bo[b].filetype = ft
+  end
+  return b
+end
 
 local function to_lines(text)
   local out = {}
@@ -511,29 +529,45 @@ function M.side_by_side(t, rel)
   local abs = t:abs(rel)
   local cur = U.read_file(abs)
   local viewed = cur and store.hash(cur) or "deleted"
-  vim.cmd("tabnew")
-  local right = api.nvim_get_current_win()
+  local right_buf
   if cur then
-    vim.cmd("edit " .. vim.fn.fnameescape(abs))
+    right_buf = vim.fn.bufadd(abs)
+    vim.fn.bufload(right_buf)
+    vim.bo[right_buf].buflisted = true
   else
-    local b = api.nvim_get_current_buf()
-    vim.bo[b].buftype = "nofile"
-    vim.bo[b].bufhidden = "wipe"
-    api.nvim_buf_set_lines(b, 0, -1, false, { "(dosya silindi)" })
+    right_buf = M.scratch({ "(dosya silindi)" }, "")
   end
+  -- Yeni pencereler geçerli pencerenin yerel seçeneklerini devralır; panelden
+  -- (Workbench) değil editör penceresinden açılsın.
+  require("noctis.ui.layout").focus_editor()
+  -- tabnew'un boş buffer'ı bırakmaması için doğrudan hedef buffer'la sekme aç
+  vim.cmd("tab sbuffer " .. right_buf)
+  local right = api.nvim_get_current_win()
   vim.cmd("diffthis")
-  vim.wo[right].winbar = "%#NoctisAccent# GÜNCEL DİSK %#NoctisMuted# " .. rel .. "  ·  Space a h: hunk geri al · Space a m: incelendi"
-  vim.cmd("leftabove vnew")
-  local left = api.nvim_get_current_win()
-  local sb = api.nvim_get_current_buf()
-  api.nvim_buf_set_lines(sb, 0, -1, false, to_lines(base))
-  vim.bo[sb].buftype = "nofile"
-  vim.bo[sb].bufhidden = "wipe"
-  vim.bo[sb].modifiable = false
-  vim.bo[sb].filetype = vim.filetype.match({ filename = abs }) or ""
+  local sb = M.scratch(to_lines(base), vim.filetype.match({ filename = abs }) or "")
   pcall(api.nvim_buf_set_name, sb, "noctis://başlangıç/" .. rel)
+  vim.cmd("leftabove vertical sbuffer " .. sb)
+  local left = api.nvim_get_current_win()
   vim.cmd("diffthis")
-  vim.wo[left].winbar = ("%%#NoctisWarning# BAŞLANGIÇ %%#NoctisMuted# %s (salt okunur) · X: hunk geri al · U: dosya · m: incelendi · q: kapat"):format(os.date("%H:%M", t.interval.created_at))
+  for _, w in ipairs({ left, right }) do
+    vim.wo[w].winhighlight = ""
+    vim.wo[w].number = true
+    vim.wo[w].signcolumn = "yes"
+    vim.wo[w].wrap = false
+    vim.wo[w].cursorline = true
+  end
+  vim.cmd("wincmd =")
+  local bar = require("noctis.ui.bar")
+  vim.wo[right].winbar = bar.build({
+    { text = " GÜNCEL DİSK ", hl = "NoctisAccent" },
+    { text = " " .. rel, hl = "NoctisMuted" },
+    { text = "  ·  Space a h: hunk geri al · Space a m: incelendi", hl = "NoctisDim", drop = 2 },
+  }, api.nvim_win_get_width(right))
+  vim.wo[left].winbar = bar.build({
+    { text = " BAŞLANGIÇ ", hl = "NoctisWarning" },
+    { text = " " .. os.date("%H:%M", t.interval.created_at) .. " · salt okunur", hl = "NoctisMuted", drop = 3 },
+    { text = " · X: hunk geri al · U: dosya · m: incelendi · q: kapat", hl = "NoctisDim", drop = 2 },
+  }, api.nvim_win_get_width(left))
   local function map(lhs, fn)
     vim.keymap.set("n", lhs, fn, { buffer = sb, nowait = true, silent = true })
   end

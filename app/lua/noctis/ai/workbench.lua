@@ -69,30 +69,34 @@ local status_hl = {
 function M.winbar()
   local icons = require("noctis.ui.icons")
   local dot = icons.enabled() and "●" or "*"
-  local parts = { "%#NoctisAccent# " .. vim.trim(icons.get().ui.ai) .. " " }
+  local width = M.is_visible() and api.nvim_win_get_width(M.win) or vim.o.columns
+  local parts = { { text = " " .. vim.trim(icons.get().ui.ai) .. " ", hl = "NoctisAccent" } }
   for _, s in ipairs(sessions.list) do
     local active = M.current == s.id
     local tab = active and "NoctisAITabActive" or "NoctisAITabInactive"
-    parts[#parts + 1] = ("%%%d@v:lua.NoctisAITabClick@%%#%s# %d %s "):format(s.n, tab, s.n, s.label)
-      .. ("%%#%s#%s %s %%X%%#NoctisPanel# "):format(active and tab or status_hl[s.status], dot, sessions.status_text(s))
+    local click = ("%%%d@v:lua.NoctisAITabClick@"):format(s.n)
+    -- Etkin olmayan oturumların durum metni dar alanda önce atılır
+    parts[#parts + 1] = { text = (" %d %s "):format(s.n, s.label), hl = tab, click = click }
+    parts[#parts + 1] = { text = dot .. " " .. sessions.status_text(s) .. " ", hl = active and tab or status_hl[s.status], click = click, drop = active and 0 or 3 }
+    parts[#parts + 1] = { text = " ", hl = "NoctisPanel" }
   end
   local root = require("noctis.ai").view_root()
   local t = root and require("noctis.ai.tracker").get(root)
   local n = t and vim.tbl_count(t.changes) or 0
-  local active = M.current == "changes"
-  parts[#parts + 1] = ("%%0@v:lua.NoctisAITabClick@%%#%s# Δ Değişiklikler %d %%X"):format(active and "NoctisAITabActive" or "NoctisAITabInactive", n)
+  parts[#parts + 1] = {
+    text = (" Δ Değişiklikler %d "):format(n),
+    hl = M.current == "changes" and "NoctisAITabActive" or "NoctisAITabInactive",
+    click = "%0@v:lua.NoctisAITabClick@",
+  }
   local running = root and #sessions.running(root) or 0
   if running > 1 then
-    parts[#parts + 1] = "%#NoctisWarning# ⚠ " .. running .. " araç aynı ağaçta"
+    parts[#parts + 1] = { text = " ⚠ " .. running .. " araç aynı ağaçta", hl = "NoctisWarning", drop = 2 }
   end
-  parts[#parts + 1] = "%#NoctisPanel#%="
   if root then
-    parts[#parts + 1] = "%#NoctisAIPath#" .. vim.fn.fnamemodify(root, ":~"):gsub("%%", "%%%%") .. " "
+    parts[#parts + 1] = { text = " " .. vim.fn.fnamemodify(root, ":~") .. " ", hl = "NoctisAIPath", right = true, drop = 5 }
   end
-  if M.mode ~= "right" or vim.o.columns >= 170 then
-    parts[#parts + 1] = "%#NoctisDim#Ctrl-\\ e: editöre dön · Space a s: geç "
-  end
-  return table.concat(parts)
+  parts[#parts + 1] = { text = "Ctrl-\\ e: editöre dön ", hl = "NoctisDim", right = true, drop = 6 }
+  return require("noctis.ui.bar").build(parts, width)
 end
 
 function M.refresh()
@@ -111,7 +115,10 @@ local function setup_win(win)
   wo.signcolumn = "no"
   wo.foldcolumn = "0"
   wo.list = false
-  wo.wrap = false
+  -- Liste/diff görünümlerinde uzun satırlar sarılır (terminal satırlarını etkilemez)
+  wo.wrap = true
+  wo.linebreak = true
+  wo.breakindent = true
   wo.cursorline = false
   wo.spell = false
   wo.statuscolumn = ""
@@ -173,6 +180,14 @@ function M.open(opts)
     api.nvim_set_current_win(M.win)
     if vim.bo[buf].buftype == "terminal" then
       vim.cmd("startinsert")
+      -- Olay/otomatik komut içinden çağrıldıysa mod değişimi ertelenir;
+      -- terminal (yazma) modunun gerçekten etkin olmasını garanti et.
+      local win = M.win
+      vim.schedule(function()
+        if win and api.nvim_win_is_valid(win) and api.nvim_get_current_win() == win and vim.fn.mode() ~= "t" then
+          vim.cmd("startinsert")
+        end
+      end)
     end
   elseif api.nvim_win_is_valid(prev) then
     api.nvim_set_current_win(prev)
@@ -184,9 +199,11 @@ function M.show_view(view, focus)
   M.open({ focus = focus })
 end
 
-function M.hide()
+---@param opts? {relayout?:boolean}  relayout: odağı editöre taşıma (pencere hemen yeniden açılacak)
+function M.hide(opts)
+  opts = opts or {}
   if M.is_visible() then
-    local was_current = api.nvim_get_current_win() == M.win
+    local was_current = api.nvim_get_current_win() == M.win and not opts.relayout
     local normal = vim.tbl_filter(function(w)
       return api.nvim_win_get_config(w).relative == "" and w ~= M.win
     end, api.nvim_tabpage_list_wins(0))
@@ -242,7 +259,9 @@ api.nvim_create_autocmd("User", {
     local mode = M.pick_mode()
     local focused = api.nvim_get_current_win() == M.win
     if mode ~= M.mode then
-      M.hide()
+      -- Yerleşim değişirken pencere yeniden oluşturulur; odak ve terminal
+      -- modu (open içindeki startinsert) korunur.
+      M.hide({ relayout = true })
       M.open({ focus = focused })
     elseif mode == "full" then
       api.nvim_win_set_config(M.win, float_cfg())
@@ -250,6 +269,26 @@ api.nvim_create_autocmd("User", {
       api.nvim_win_set_width(M.win, size_for(mode))
     else
       api.nvim_win_set_height(M.win, size_for(mode))
+    end
+  end,
+})
+-- Pencerede başka bir buffer gösterilince Neovim pencere-yerel seçenekleri
+-- (winbar dahil) sıfırlayabilir; Workbench penceresinde yeniden uygula.
+api.nvim_create_autocmd("BufWinEnter", {
+  group = group,
+  callback = function()
+    local win = api.nvim_get_current_win()
+    if M.win and win == M.win then
+      setup_win(win)
+      vim.wo[win].winbar = M.winbar()
+    end
+  end,
+})
+api.nvim_create_autocmd("WinResized", {
+  group = group,
+  callback = function()
+    if M.is_visible() then
+      vim.wo[M.win].winbar = M.winbar()
     end
   end,
 })

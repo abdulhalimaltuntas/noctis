@@ -122,7 +122,8 @@ local function render()
   center("Neovim tabanlı terminal kodlama ortamı · v" .. require("noctis.brand").version, "NoctisDashSubtitle")
   local proj = require("noctis.project")
   local root = vim.fn.fnamemodify(proj.root(), ":~")
-  center(("proje: %s%s"):format(root, proj.kind() == "git" and "  (git)" or ""), "NoctisDashPath")
+  local ptxt = ("proje: %s%s"):format(root, proj.kind() == "git" and "  (git)" or "")
+  center(U.shorten_path(ptxt, math.max(20, width - 6)), "NoctisDashPath")
   blank()
 
   section("Başla")
@@ -234,6 +235,28 @@ local function move(dir)
   end
 end
 
+local sel_ns = api.nvim_create_namespace("noctis.dashboard.sel")
+
+--- Seçili öğeyi yalnız öğe alanında vurgula (tüm satır boyunca değil)
+local function highlight_current()
+  local buf = M.buf
+  if not buf or not api.nvim_buf_is_valid(buf) or api.nvim_get_current_buf() ~= buf then
+    return
+  end
+  api.nvim_buf_clear_namespace(buf, sel_ns, 0, -1)
+  local row = api.nvim_win_get_cursor(0)[1]
+  for _, it in ipairs(M.items or {}) do
+    if it.row == row then
+      local line = api.nvim_buf_get_lines(buf, row - 1, row, false)[1] or ""
+      api.nvim_buf_set_extmark(buf, sel_ns, row - 1, math.max(0, it.col - 1), {
+        end_col = #line,
+        hl_group = "NoctisDashSel",
+        priority = 50,
+      })
+    end
+  end
+end
+
 local function activate()
   local row = api.nvim_win_get_cursor(0)[1]
   for _, it in ipairs(M.items or {}) do
@@ -257,7 +280,7 @@ function M.open(opts)
     number = false,
     relativenumber = false,
     signcolumn = "no",
-    cursorline = true,
+    cursorline = false,
     list = false,
     wrap = false,
     colorcolumn = "",
@@ -266,7 +289,6 @@ function M.open(opts)
   }) do
     vim.wo[win][opt] = val
   end
-  vim.wo[win].winhighlight = "CursorLine:SnacksPickerListCursorLine"
   local map = function(lhs, fn)
     vim.keymap.set("n", lhs, fn, { buffer = buf, nowait = true, silent = true })
   end
@@ -284,6 +306,8 @@ function M.open(opts)
   end)
   map("<CR>", activate)
   render()
+  highlight_current()
+  api.nvim_create_autocmd("CursorMoved", { buffer = buf, callback = highlight_current })
   if opts.force then
     -- Komutla açıldıysa q dashboard'u kapatır, uygulamadan çıkmaz
     map("q", function()

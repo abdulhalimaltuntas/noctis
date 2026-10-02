@@ -24,7 +24,7 @@ return {
           separator = icons.enabled() and "➜" or "->",
           group = icons.enabled() and "+" or "+",
         },
-        win = { border = icons.border_name():find(",") and "single" or icons.border_name(), title = true },
+        win = { border = icons.border_opt(), title = true },
         -- Terminal modunda which-key tetiklenmez: shell/AI tuşları korunur
         triggers = { { "<auto>", mode = "nxso" } },
       }
