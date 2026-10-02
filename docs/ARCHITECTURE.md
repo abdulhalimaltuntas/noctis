@@ -19,7 +19,7 @@ app/lua/noctis/
   files.lua · trash.lua · buffers.lua · quit.lua · session.lua · project.lua
   terminal.lua · tasks.lua · replace.lua · git.lua · format.lua · lang.lua
   bigfile.lua · clipboard.lua · doctor.lua · health.lua · setup.lua · lazy.lua
-  plugins/{snacks,editor,coding}.lua   lazy.nvim plugin specs
+  plugins/{snacks,editor,coding,ui}.lua   lazy.nvim plugin specs
   ai/
     profiles.lua · sessions.lua · workbench.lua · init.lua   Process/session side
     store.lua · scope.lua · baseline.lua · watcher.lua · tracker.lua   Change detection
@@ -56,13 +56,17 @@ and `docs/KEYMAPS.md` are generated from it. User overrides use the command id;
 conflict/prefix checks run in the tests and in `:checkhealth`. An unavailable
 command (missing plugin, `rg`, LSP) is shown with the reason.
 
-**Design system.** Variants define only 11 base tokens + 8 syntax hues; derived
+**Design system.** Variants define only 11 base tokens + 8 syntax hues (plus
+`background`, and two blend knobs that light variants use); derived
 tones such as the selection, search, diff and diagnostics backgrounds are
 produced with the same formulas in `tokens.lua`. Components use highlight groups,
 never colors; when the theme changes, the statusline, tabline, explorer,
 completion, Git, diagnostics and the Workbench all update together. Without
-truecolor every color is mapped to the nearest xterm-256 color. WCAG contrasts
-were measured (body text 14.9:1, comments ≥4.4:1).
+truecolor every color is mapped to the nearest xterm-256 color. `theme.audit()`
+checks every highlight group of every variant against WCAG floors: text 4.5:1,
+dimmed hints 3:1, popup borders 2:1, including text drawn over the selected row
+and syntax over each surface (editor, panel, popup). It runs in the tests and in
+`:checkhealth`, so a color change that breaks a floor fails the suite.
 
 **Typing animation (`ui/typing.lua`).** One `InsertCharPre` autocmd records each
 typed character; after it's inserted, its position is verified and it gets an
@@ -109,14 +113,15 @@ is read without `vim.system`'s text normalization (CRLF is preserved).
 | Formatting | conform.nvim | `stop_after_first`, LSP only as a fallback, timeouts |
 | Tool installation | mason.nvim | Only when the user starts it; NOCTIS adds it to PATH |
 | Icons | mini.icons | Loaded when icons are on; always installed (no network needed when the terminal changes) |
+| Command line popup | noice.nvim + nui.nvim | Only the command line and its completion menu: messages stay in Neovim's message area, notifications with snacks, LSP windows with blink. Off with `ui.cmdline = "classic"` |
 
-Not used: bufferline, lualine, noice, telescope, nvim-cmp, neo-tree — no second
+Not used: bufferline, lualine, telescope, nvim-cmp, neo-tree — no second
 solution doing the same job is loaded.
 
 ## Lazy loading
 
 `snacks.nvim` and `nvim-treesitter` (the plugin doesn't support lazy loading)
-load at startup; which-key on `VeryLazy`, blink.cmp on `InsertEnter`/`CmdlineEnter`,
+load at startup; which-key and noice on `VeryLazy`, blink.cmp on `InsertEnter`/`CmdlineEnter`,
 lspconfig and gitsigns on `BufReadPre`, conform on `BufWritePre`/command, mason on
 command. A not-yet-loaded feature called from the palette or a key is loaded by
 lazy.nvim through `require` (verified in the tests).
