@@ -169,7 +169,7 @@ if want 16-explorer-marks; then
   lit "delete tests/test_main.py"; keys Enter; sleep 1.5
   keys C-\\ e; sleep 0.4
   keys " " "e"; sleep 1.5
-  tm send-keys -t main ":redraw!" Enter; sleep 0.5
+  tm send-keys -t main ":redraw! | echo ''" Enter; sleep 0.5
   shot 16-explorer-marks
   reset_demo
 fi

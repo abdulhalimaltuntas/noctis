@@ -6,6 +6,7 @@ Kullanım: ansi2html.py girdi.ansi çıktı.html "Başlık"
 import html
 import re
 import sys
+import unicodedata
 
 BASE16 = [
     "#000000", "#cd0000", "#00cd00", "#cdcd00", "#0000ee", "#cd00cd", "#00cdcd", "#e5e5e5",
@@ -25,6 +26,54 @@ def xterm256(n: int) -> str:
 
 
 SGR = re.compile(r"\x1b\[([0-9;:]*)m")
+
+
+def is_icon(ch: str) -> bool:
+    """Nerd Font ikonları özel kullanım alanlarındadır (PUA)."""
+    o = ord(ch)
+    return 0xE000 <= o <= 0xF8FF or o >= 0xF0000
+
+
+def render_cells(cells: list) -> str:
+    """(css, karakter) hücrelerini terminal ızgarasına sabitlenmiş HTML'e çevirir.
+
+    Terminal her karakteri bir (geniş karakterde iki) hücreye yerleştirir;
+    glifin fonttaki genişliği sonraki hücreleri kaydırmaz. Tarayıcı ise yedek
+    fonttan gelen glifin (Nerd Font ikonu, kutu çizimi) kendi genişliğini
+    kullanır ve satırın geri kalanını kaydırır. Bu yüzden Latin dışı her
+    karakter sabit genişlikli bir kutuya konur.
+
+    İkonlar: Symbols Nerd Font Mono glifleri 1em genişliğindedir (hücreden
+    geniş). kitty/WezTerm/Ghostty ikonun ardından boşluk varsa ikonu iki hücreye
+    yayar; yoksa hücreye sığdırır. Burada da aynısı yapılır.
+    """
+    out, cur_css, buf = [], None, []
+
+    def flush():
+        if buf:
+            out.append(f'<span style="{cur_css}">{"".join(buf)}</span>')
+            buf.clear()
+
+    i = 0
+    while i < len(cells):
+        css, ch = cells[i]
+        if css != cur_css:
+            flush()
+            cur_css = css
+        if ord(ch) < 0x250:
+            buf.append(html.escape(ch))
+        elif is_icon(ch):
+            if i + 1 < len(cells) and cells[i + 1][1] == " ":
+                buf.append(f'<b class="c2 ic">{html.escape(ch)}</b>')
+                i += 1  # ardındaki boşluk hücresi ikona ait
+            else:
+                buf.append(f'<b class="c1 ic1">{html.escape(ch)}</b>')
+        else:
+            w = 2 if unicodedata.east_asian_width(ch) in ("W", "F") else 1
+            buf.append(f'<b class="c{w}">{html.escape(ch)}</b>')
+        i += 1
+    flush()
+    return "".join(out)
 
 
 def convert(text: str, default_fg: str, default_bg: str) -> str:
@@ -93,7 +142,7 @@ def convert(text: str, default_fg: str, default_bg: str) -> str:
             pos = m.end()
         if pos < len(line):
             spans.append((dict(state), line[pos:]))
-        parts = []
+        line_cells = []
         for st, txt in spans:
             fg = st["fg"] or default_fg
             bg = st["bg"] or default_bg
@@ -113,8 +162,9 @@ def convert(text: str, default_fg: str, default_bg: str) -> str:
                 deco.append("line-through")
             if deco:
                 css.append("text-decoration:" + " ".join(deco))
-            parts.append(f'<span style="{";".join(css)}">{html.escape(txt)}</span>')
-        out_lines.append("<div>" + "".join(parts) + "</div>")
+            css_s = ";".join(css)
+            line_cells.extend((css_s, ch) for ch in txt)
+        out_lines.append("<div>" + render_cells(line_cells) + "</div>")
     # white-space:pre içinde div'ler arası "\n" fazladan satır üretir
     return "".join(out_lines)
 
@@ -136,6 +186,11 @@ html, body {{ margin:0; background:{default_bg}; }}
   font-variant-ligatures:none; }}
 #term div {{ height:17px; }}
 #term span {{ display:inline-block; height:17px; vertical-align:top; }}
+#term b {{ display:inline-block; font-weight:inherit; height:17px; vertical-align:top; overflow:visible; }}
+#term b.c1 {{ width:1ch; }}
+#term b.c2 {{ width:2ch; }}
+#term b.ic {{ text-align:left; transform:scale(.88); transform-origin:left center; }}
+#term b.ic1 {{ text-align:left; transform:scale(.6); transform-origin:left center; }}
 </style></head><body><div id="term">{body}</div></body></html>"""
     with open(dst, "w", encoding="utf-8") as f:
         f.write(page)
