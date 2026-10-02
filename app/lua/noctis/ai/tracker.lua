@@ -75,9 +75,14 @@ function T.new(root, interval)
     self:mark(rel)
   end)
   self.timer = uv.new_timer()
+  -- Uzlaştırma sıklığı son taramanın maliyetine uyarlanır: küçük projede
+  -- reconcile_ms, büyük projede (yavaş tarama) en fazla 60 sn'de bir.
+  self.next_reconcile = 0
   self.timer:start(cfg.reconcile_ms, cfg.reconcile_ms, function()
     vim.schedule(function()
-      self:reconcile()
+      if uv.now() >= self.next_reconcile then
+        self:reconcile()
+      end
     end)
   end)
   return self
@@ -348,9 +353,13 @@ function T:reconcile(cb)
     args[#args + 1] = "--glob"
     args[#args + 1] = "!**/" .. d .. "/**"
   end
+  local t0 = uv.now()
   local function finish(listed)
     vim.schedule(function()
       self.reconciling = false
+      local took = uv.now() - t0
+      local base = require("noctis.config").options.ai.watch.reconcile_ms
+      self.next_reconcile = uv.now() + math.min(60000, math.max(base, took * 40))
       if self.stopped then
         return
       end

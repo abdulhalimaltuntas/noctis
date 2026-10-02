@@ -75,7 +75,7 @@ function M.render()
     local group = is_cur and "NoctisTabActive" or "NoctisTabInactive"
     local s = ("%%%d@v:lua.NoctisTablineClick@"):format(b)
     if is_cur then
-      s = s .. "%#NoctisTabActiveMark#▎"
+      s = s .. "%#NoctisTabActiveMark#" .. (icons.enabled() and "▎" or ">")
     else
       s = s .. "%#" .. group .. "# "
     end
