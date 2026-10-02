@@ -533,4 +533,114 @@ H.test("code punctuation and popup borders no longer reuse the UI chrome grey", 
   H.ok(fg("FloatBorder") ~= border, "popup border is not the separator color")
 end)
 
+H.suite("Command palette and dashboard")
+
+local function palette_items()
+  local got
+  local orig = vim.ui.select
+  vim.ui.select = function(items, opts, cb)
+    got = { items = items, opts = opts }
+    cb(nil)
+  end
+  require("noctis.palette").open()
+  vim.ui.select = orig
+  return got
+end
+
+H.test("commands used from the palette come first, most used first; old uses fade", function()
+  local U = require("noctis.util")
+  local path = U.state_dir() .. "/palette.json"
+  local now = os.time()
+  U.json_write(path, {
+    version = 1,
+    uses = {
+      ["ui.theme"] = { n = 1, t = now },
+      help = { n = 3, t = now },
+      -- many uses two months ago weigh less than one use today
+      ["files.find"] = { n = 10, t = now - 60 * 86400 },
+    },
+  })
+  local got = palette_items()
+  H.eq(got.items[1].id, "help")
+  H.eq(got.items[2].id, "ui.theme")
+  H.eq(got.items[3].id, "files.find")
+  H.ok(got.opts.format_item(got.items[1]):find("(recent)", 1, true), "recent items are marked")
+  -- the rest keep registration order
+  local R = require("noctis.registry")
+  local rest = {}
+  for i = 4, #got.items do
+    if got.items[i].ok then
+      rest[#rest + 1] = got.items[i].order
+    end
+  end
+  for i = 2, #rest do
+    H.ok(rest[i] > rest[i - 1], "registration order after the recent ones")
+  end
+  H.ok(R.by_id[got.items[1].id], "known id")
+  vim.fn.delete(path)
+end)
+
+H.test("running a command from the palette records it; unavailable commands never jump ahead", function()
+  local U = require("noctis.util")
+  local path = U.state_dir() .. "/palette.json"
+  vim.fn.delete(path)
+  local P = require("noctis.palette")
+  P.record("help")
+  P.record("help")
+  local st = U.json_read(path)
+  H.ok(st.uses.help.n > 1.9 and st.uses.help.n <= 2, "two uses counted")
+  -- a recorded command that can't run stays among the unavailable ones
+  local R = require("noctis.registry")
+  local unavailable
+  for _, c in ipairs(R.list) do
+    if c.palette ~= false and not R.available(c) then
+      unavailable = c.id
+      break
+    end
+  end
+  if unavailable then
+    for _ = 1, 5 do
+      P.record(unavailable)
+    end
+    local got = palette_items()
+    H.eq(got.items[1].id, "help")
+    for i, it in ipairs(got.items) do
+      if it.id == unavailable then
+        H.ok(not it.recent and i > 1, "unavailable command not promoted")
+      end
+    end
+  end
+  vim.fn.delete(path)
+end)
+
+H.test("with icons on, dashboard actions and palette rows carry their group glyph", function()
+  local term = vim.env.TERM
+  vim.env.TERM = "xterm-256color"
+  local icons = require("noctis.ui.icons")
+  H.ok(icons.enabled(), "icons on")
+  local dash = require("noctis.ui.dashboard")
+  dash.open({ force = true })
+  local buf = dash.buf
+  local lines = vim.api.nvim_buf_get_lines(buf, 0, -1, false)
+  local row
+  for i, l in ipairs(lines) do
+    if l:find("Find file", 1, true) then
+      row = i
+    end
+  end
+  H.ok(row, "Find file action shown")
+  H.ok(lines[row]:find(icons.get().ui.file, 1, true), "glyph before the label")
+  local found
+  for _, m in ipairs(vim.api.nvim_buf_get_extmarks(buf, -1, { row - 1, 0 }, { row - 1, -1 }, { details = true })) do
+    if m[4].hl_group == "NoctisGroupFile" then
+      found = true
+    end
+  end
+  H.ok(found, "glyph colored by its command group")
+  dash.close()
+  vim.env.TERM = term
+  H.ok(not icons.enabled(), "plain again on the Linux console")
+  H.eq(select(1, icons.group("File")), "", "no glyph column without icons")
+end)
+
 H.done()

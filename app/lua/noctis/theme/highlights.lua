@@ -393,6 +393,39 @@ function M.build(c, opts)
   h.NoctisPaletteGroup = { fg = c.accent2 }
   h.NoctisPaletteDesc = { fg = c.muted }
   h.NoctisPaletteUnavailable = { fg = c.fg_dim, italic = true }
+  h.NoctisPaletteRecent = { fg = c.fg_dim, italic = true }
+
+  -- Command group glyphs (palette, dashboard): a small set of hues from the
+  -- syntax palette so groups are told apart at a glance.
+  local group_colors = {
+    AI = c.accent2,
+    Buffer = s.type,
+    Code = s.func,
+    Diagnostics = c.warning,
+    File = c.accent,
+    General = c.accent,
+    Git = s.number,
+    Interface = s.special,
+    Project = s.type,
+    QuitSession = s.special,
+    SearchReplace = c.warning,
+    Terminal = c.success,
+    Window = s.type,
+  }
+  for name, col in pairs(group_colors) do
+    h["NoctisGroup" .. name] = { fg = col }
+  end
+
+  -- mini.icons (file icons in the explorer, pickers and dashboard)
+  h.MiniIconsAzure = { fg = s.func }
+  h.MiniIconsBlue = { fg = s.type }
+  h.MiniIconsCyan = { fg = c.accent2 }
+  h.MiniIconsGreen = { fg = c.success }
+  h.MiniIconsGrey = { fg = c.muted }
+  h.MiniIconsOrange = { fg = s.number }
+  h.MiniIconsPurple = { fg = s.keyword }
+  h.MiniIconsRed = { fg = c.error }
+  h.MiniIconsYellow = { fg = c.warning }
 
   -- AI Workbench and change review
   h.NoctisAIHeader = { fg = c.fg, bg = c.panel, bold = true }

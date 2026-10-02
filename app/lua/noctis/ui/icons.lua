@@ -28,6 +28,23 @@ local nerd = {
     palette = " ",
     project = " ",
     quit = "󰗼 ",
+    settings = " ",
+  },
+  -- One glyph per command group (palette rows, dashboard actions)
+  groups = {
+    AI = "󰚩 ",
+    Buffer = " ",
+    Code = " ",
+    Diagnostics = " ",
+    File = "󰈔 ",
+    General = " ",
+    Git = " ",
+    Interface = " ",
+    Project = " ",
+    ["Quit / Session"] = "󰁯 ",
+    ["Search / Replace"] = " ",
+    Terminal = " ",
+    Window = " ",
   },
 }
 
@@ -56,7 +73,9 @@ local plain = {
     palette = ":",
     project = "",
     quit = "",
+    settings = "",
   },
+  groups = {}, -- no glyph column without a Nerd Font
 }
 
 local function limited_terminal()
@@ -70,6 +89,14 @@ end
 
 function M.get()
   return M.enabled() and nerd or plain
+end
+
+--- Glyph and highlight group for a command group ("" when icons are off).
+---@param group string
+---@return string icon, string hl
+function M.group(group)
+  local icon = M.get().groups[group] or (M.enabled() and "• " or "")
+  return icon, "NoctisGroup" .. group:gsub("[^%w]", "")
 end
 
 function M.border_name()

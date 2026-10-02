@@ -38,22 +38,55 @@ end
 
 local function actions()
   local list = {
-    { key = "n", label = "New file", id = "files.new" },
-    { key = "f", label = "Find file", id = "files.find" },
-    { key = "g", label = "Search project", id = "files.grep" },
-    { key = "o", label = "Open project", id = "project.open" },
+    { key = "n", label = "New file", id = "files.new", icon = "new" },
+    { key = "f", label = "Find file", id = "files.find", icon = "file" },
+    { key = "g", label = "Search project", id = "files.grep", icon = "search" },
+    { key = "o", label = "Open project", id = "project.open", icon = "project" },
   }
   if require("noctis.session").exists() then
-    list[#list + 1] = { key = "s", label = "Restore session", id = "session.restore" }
+    list[#list + 1] = { key = "s", label = "Restore session", id = "session.restore", icon = "session" }
   end
   vim.list_extend(list, {
-    { key = "w", label = "AI Workbench", id = "ai.toggle" },
-    { key = "t", label = "One-minute tour", id = "help.tutorial" },
-    { key = "?", label = "Help and keymaps", id = "help" },
-    { key = ",", label = "Settings", id = "config.open" },
-    { key = "q", label = "Quit", id = "quit" },
+    { key = "w", label = "AI Workbench", id = "ai.toggle", icon = "ai" },
+    { key = "t", label = "One-minute tour", id = "help.tutorial", icon = "clock" },
+    { key = "?", label = "Help and keymaps", id = "help", icon = "help" },
+    { key = ",", label = "Settings", id = "config.open", icon = "settings" },
+    { key = "q", label = "Quit", id = "quit", icon = "quit" },
   })
   return list
+end
+
+--- Glyph + highlight for an action: its own glyph in its command group's color
+local function action_icon(a)
+  local icons = require("noctis.ui.icons")
+  local glyph = icons.get().ui[a.icon] or ""
+  if glyph == "" then
+    return nil
+  end
+  local cmd = require("noctis.registry").by_id[a.id]
+  local _, hl = icons.group(cmd and cmd.group or "")
+  return { glyph, hl }
+end
+
+--- File type icon from mini.icons (installed with the other plugins; a missing
+--- plugin or safe mode falls back to a plain file glyph)
+local function file_icon(path)
+  local icons = require("noctis.ui.icons")
+  if not icons.enabled() then
+    return nil
+  end
+  local mi = package.loaded["mini.icons"]
+  if not mi and not U.is_safe_mode() and package.loaded["lazy"] then
+    local ok, mod = pcall(require, "mini.icons")
+    mi = ok and mod or nil
+  end
+  if mi then
+    local ok, glyph, hl = pcall(mi.get, "file", path)
+    if ok and glyph then
+      return { glyph .. " ", hl }
+    end
+  end
+  return { icons.get().ui.file, "NoctisMuted" }
 end
 
 ---@class noctis.DashLine
@@ -89,8 +122,9 @@ local function render()
   local function section(title)
     lines[#lines + 1] = { text = pad .. title, hls = { { #pad, #pad + #title, "NoctisDashSection" } } }
   end
-  local function item(key, label, right, act, label_group)
-    local left = ("  %s  %s"):format(key, label)
+  local function item(key, label, right, act, label_group, icon)
+    local glyph = icon and icon[1] or ""
+    local left = ("  %s  %s%s"):format(key, glyph, label)
     local rw = vim.fn.strdisplaywidth(right or "")
     local gap = math.max(2, W - vim.fn.strdisplaywidth(left) - rw)
     if right and right ~= "" and vim.fn.strdisplaywidth(left) + rw + 2 > W then
@@ -100,11 +134,15 @@ local function render()
     end
     local text = pad .. left .. string.rep(" ", gap) .. (right or "")
     local kstart = #pad + 2
-    local lstart = kstart + #key + 2
+    local istart = kstart + #key + 2
+    local lstart = istart + #glyph
     local hls = {
       { kstart, kstart + #key, "NoctisDashKey" },
       { lstart, lstart + #label, label_group or "NoctisDashDesc" },
     }
+    if glyph ~= "" then
+      hls[#hls + 1] = { istart, lstart, icon[2] }
+    end
     if right and right ~= "" then
       hls[#hls + 1] = { #text - #right, #text, "NoctisDashPath" }
     end
@@ -130,7 +168,7 @@ local function render()
   for _, a in ipairs(acts) do
     item(a.key, a.label, keyhint(a.id), function()
       require("noctis.registry").run(a.id)
-    end)
+    end, nil, action_icon(a))
   end
 
   -- Shorten the lists to fit the remaining height
@@ -151,7 +189,7 @@ local function render()
       local dir = vim.fn.fnamemodify(f, ":~:h")
       item(tostring(i), tail, dir, function()
         vim.cmd("edit " .. vim.fn.fnameescape(f))
-      end)
+      end, nil, file_icon(f))
     end
   end
   if nprojects > 0 then
@@ -162,9 +200,10 @@ local function render()
       local keys = { "a", "b", "c", "d", "e" }
       for i = 1, math.min(nprojects, #projects) do
         local p = projects[i].path
+        local folder = require("noctis.ui.icons").get().ui.folder
         item(keys[i], vim.fn.fnamemodify(p, ":t"), vim.fn.fnamemodify(p, ":~"), function()
           proj.open(p)
-        end)
+        end, nil, folder ~= "" and { folder, "NoctisGroupProject" } or nil)
       end
     end
   end
