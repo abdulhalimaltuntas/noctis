@@ -613,6 +613,25 @@ H.test("running a command from the palette records it; unavailable commands neve
   vim.fn.delete(path)
 end)
 
+H.test("every Nerd Font icon has a glyph (none lost to an editor stripping private-use characters)", function()
+  local term = vim.env.TERM
+  vim.env.TERM = "xterm-256color"
+  local blank = {}
+  local function walk(t, path)
+    for k, v in pairs(t) do
+      if type(v) == "table" then
+        walk(v, path .. "." .. k)
+      elseif type(v) == "string" and vim.trim(v) == "" then
+        blank[#blank + 1] = path .. "." .. k
+      end
+    end
+  end
+  walk(require("noctis.ui.icons").get(), "icons")
+  vim.env.TERM = term
+  table.sort(blank)
+  H.eq(table.concat(blank, ", "), "", "blank icons")
+end)
+
 H.test("with icons on, dashboard actions and palette rows carry their group glyph", function()
   local term = vim.env.TERM
   vim.env.TERM = "xterm-256color"
@@ -638,9 +657,10 @@ H.test("with icons on, dashboard actions and palette rows carry their group glyp
   end
   H.ok(found, "glyph colored by its command group")
   dash.close()
-  vim.env.TERM = term
-  H.ok(not icons.enabled(), "plain again on the Linux console")
+  vim.env.TERM = "linux"
+  H.ok(not icons.enabled(), "plain on the Linux console")
   H.eq(select(1, icons.group("File")), "", "no glyph column without icons")
+  vim.env.TERM = term
 end)
 
 H.test("before the first AI session the Changes view explains the review flow, with live keys", function()
