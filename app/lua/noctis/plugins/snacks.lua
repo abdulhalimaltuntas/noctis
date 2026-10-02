@@ -50,6 +50,17 @@ return {
               hidden = false,
               ignored = false,
               layout = { preset = "sidebar", preview = false, layout = { width = cfg.ui.explorer_width } },
+              -- AI inceleme aralığında değişen dosyalara A/M/D işareti
+              format = function(item, picker)
+                local ret = require("snacks.picker.format").file(item, picker)
+                if not item.dir and package.loaded["noctis.ai.tracker"] then
+                  local mark = require("noctis.ai").explorer_mark(item.file)
+                  if mark then
+                    ret[#ret + 1] = { " " .. mark.text, mark.hl }
+                  end
+                end
+                return ret
+              end,
               actions = {
                 explorer_del = function(picker)
                   require("noctis.explorer").delete_action(picker)

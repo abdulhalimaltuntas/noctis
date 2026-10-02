@@ -101,7 +101,7 @@ local function git_part(buf, compact)
   local d = vim.b[buf].gitsigns_status_dict
   local head = (d and d.head) or vim.b[buf].gitsigns_head
   if not head or head == "" then
-    head = package.loaded["noctis.git"] and require("noctis.git").cached_branch() or nil
+    head = require("noctis.git").cached_branch()
   end
   if not head or head == "" then
     return ""

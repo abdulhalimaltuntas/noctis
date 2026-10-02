@@ -216,6 +216,15 @@ function M.disk_changed(buf)
   return true, "changed"
 end
 
+--- Kullanıcı güncel disk sürümünü gördü/birleştirdi: bu sürüm yeni referanstır.
+--- Sonraki kayıt, disk o andan beri yeniden değişmediyse Neovim'in yerleşik
+--- "okunduktan sonra değişti" sorusunu sormadan yazar.
+function M.acknowledge(buf)
+  local st = vim.uv.fs_stat(api.nvim_buf_get_name(buf))
+  M.stat[buf] = st and { mtime = st.mtime.sec, nsec = st.mtime.nsec, size = st.size, ino = st.ino } or nil
+  vim.b[buf].noctis_ack = true
+end
+
 --- Diskteki içerik (okunamazsa nil)
 function M.disk_text(buf)
   return U.read_file(api.nvim_buf_get_name(buf))
@@ -303,6 +312,7 @@ function M.merge(buf)
   api.nvim_buf_set_lines(buf, 0, -1, false, merged)
   -- Birleşmiş içerik artık güncel disk sürümünü temel alır.
   M.base[buf] = disk
+  M.acknowledge(buf)
   if res.code == 0 then
     M.clear_conflict(buf)
     U.info("Birleştirme temiz tamamlandı (buffer güncellendi, henüz kaydedilmedi). Geri almak: u")

@@ -1,0 +1,141 @@
+#!/usr/bin/env python3
+"""NOCTIS test CLI'si: AI kodlama aracı gibi davranan, deterministik dosya
+işlemleri yapan etkileşimli bir program. Gerçek bir AI hizmetine bağlanmaz.
+
+Etkileşimli komutlar (her satır bir komut):
+  write  <yol> <metin>      dosyaya yaz (aç/kes/yaz); \\n kaçışları satır sonu olur
+  atomic <yol> <metin>      geçici dosyaya yazıp rename ile değiştir (atomic save)
+  append <yol> <metin>      sona ekle
+  replace <yol> <eski> <yeni>  dosyada metin değiştir (yerinde yazma)
+  mkdir  <yol>              klasör oluştur
+  delete <yol>              dosyayı sil
+  rename <eski> <yeni>      yeniden adlandır
+  slow   <yol> <n>          n parça halinde 50 ms arayla yaz (yazma durulma testi)
+  ask    <soru>             onay sorusu sor ve yanıtı bekle (y/n)
+  sleep  <sn>
+  color                     ANSI renk örneği bas
+  exit   [kod]
+
+Toplu mod: noctis-fake-ai --batch 'write a.txt merhaba' 'delete b.txt'
+"""
+import os
+import sys
+import time
+
+RESET = "\033[0m"
+VIOLET = "\033[38;2;167;139;250m"
+CYAN = "\033[36m"
+GREEN = "\033[32m"
+RED = "\033[31m"
+
+
+def unescape(s: str) -> str:
+    return s.encode("utf-8").decode("unicode_escape").encode("latin-1").decode("utf-8")
+
+
+def out(msg: str) -> None:
+    sys.stdout.write(msg + "\r\n" if sys.stdout.isatty() else msg + "\n")
+    sys.stdout.flush()
+
+
+def ensure_parent(path: str) -> None:
+    parent = os.path.dirname(path)
+    if parent:
+        os.makedirs(parent, exist_ok=True)
+
+
+def run(line: str) -> int | None:
+    parts = line.strip().split(" ", 2)
+    if not parts or not parts[0]:
+        return None
+    cmd = parts[0]
+    try:
+        if cmd == "write":
+            ensure_parent(parts[1])
+            with open(parts[1], "w", encoding="utf-8", newline="") as f:
+                f.write(unescape(parts[2]) if len(parts) > 2 else "")
+            out(f"{GREEN}yazıldı{RESET} {parts[1]}")
+        elif cmd == "atomic":
+            ensure_parent(parts[1])
+            tmp = os.path.join(os.path.dirname(parts[1]) or ".", f".{os.path.basename(parts[1])}.tmp{os.getpid()}")
+            with open(tmp, "w", encoding="utf-8", newline="") as f:
+                f.write(unescape(parts[2]) if len(parts) > 2 else "")
+                f.flush()
+                os.fsync(f.fileno())
+            os.replace(tmp, parts[1])
+            out(f"{GREEN}atomik kaydedildi{RESET} {parts[1]}")
+        elif cmd == "append":
+            ensure_parent(parts[1])
+            with open(parts[1], "a", encoding="utf-8", newline="") as f:
+                f.write(unescape(parts[2]) if len(parts) > 2 else "")
+            out(f"{GREEN}eklendi{RESET} {parts[1]}")
+        elif cmd == "replace":
+            path = parts[1]
+            old, new = parts[2].split(" ", 1)
+            with open(path, "r", encoding="utf-8", newline="") as f:
+                text = f.read()
+            with open(path, "w", encoding="utf-8", newline="") as f:
+                f.write(text.replace(unescape(old), unescape(new)))
+            out(f"{GREEN}değiştirildi{RESET} {path}")
+        elif cmd == "mkdir":
+            os.makedirs(parts[1], exist_ok=True)
+            out(f"{GREEN}klasör{RESET} {parts[1]}")
+        elif cmd == "delete":
+            os.remove(parts[1])
+            out(f"{RED}silindi{RESET} {parts[1]}")
+        elif cmd == "rename":
+            ensure_parent(parts[2])
+            os.rename(parts[1], parts[2])
+            out(f"{CYAN}taşındı{RESET} {parts[1]} -> {parts[2]}")
+        elif cmd == "slow":
+            n = int(parts[2]) if len(parts) > 2 else 5
+            ensure_parent(parts[1])
+            with open(parts[1], "w", encoding="utf-8") as f:
+                for i in range(n):
+                    f.write(f"parça {i}\n")
+                    f.flush()
+                    time.sleep(0.05)
+            out(f"{GREEN}yavaş yazıldı{RESET} {parts[1]}")
+        elif cmd == "ask":
+            sys.stdout.write(f"{VIOLET}?{RESET} {' '.join(parts[1:])} [y/n] ")
+            sys.stdout.flush()
+            ans = sys.stdin.readline().strip()
+            out(f"yanıt: {ans}")
+        elif cmd == "sleep":
+            time.sleep(float(parts[1]))
+        elif cmd == "color":
+            out(f"{VIOLET}mor{RESET} {CYAN}camgöbeği{RESET} {GREEN}yeşil{RESET} {RED}kırmızı{RESET} \033[1mkalın{RESET}")
+        elif cmd == "exit":
+            return int(parts[1]) if len(parts) > 1 else 0
+        else:
+            out(f"{RED}bilinmeyen komut{RESET}: {cmd}")
+    except Exception as e:  # noqa: BLE001
+        out(f"{RED}hata{RESET}: {e}")
+    return None
+
+
+def main() -> int:
+    args = sys.argv[1:]
+    if args and args[0] == "--version":
+        print("noctis-fake-ai 1.0 (test)")
+        return 0
+    if args and args[0] == "--batch":
+        for line in args[1:]:
+            code = run(line)
+            if code is not None:
+                return code
+        return 0
+    out(f"{VIOLET}noctis-fake-ai{RESET} — test aracı · cwd: {os.getcwd()}")
+    while True:
+        sys.stdout.write(f"{CYAN}fake-ai>{RESET} ")
+        sys.stdout.flush()
+        line = sys.stdin.readline()
+        if not line:
+            return 0
+        code = run(line)
+        if code is not None:
+            return code
+
+
+if __name__ == "__main__":
+    sys.exit(main())

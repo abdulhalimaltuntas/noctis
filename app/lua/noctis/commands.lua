@@ -552,6 +552,36 @@ R.add({
   end,
 })
 R.add({
+  id = "ai.revert_hunk",
+  title = "Bu hunk'ı inceleme başlangıcına döndür",
+  desc = "Editördeki dosyada imleçteki aralık değişikliği; disk incelenen sürümle aynı olmalı",
+  group = "AI",
+  keys = "<leader>ah",
+  run = function()
+    m("noctis.ai.review").current_revert_hunk()
+  end,
+})
+R.add({
+  id = "ai.revert_file",
+  title = "Bu dosyayı inceleme başlangıcına döndür",
+  desc = "Onay ister; önceki içerik yoksa yapılmaz; mevcut içerik önce yedeklenir",
+  group = "AI",
+  keys = "<leader>aU",
+  run = function()
+    m("noctis.ai.review").current_revert_file()
+  end,
+})
+R.add({
+  id = "ai.reviewed",
+  title = "Bu dosyayı incelendi olarak işaretle",
+  desc = "İçerik yeniden değişirse işaret kendiliğinden geçersizleşir",
+  group = "AI",
+  keys = "<leader>am",
+  run = function()
+    m("noctis.ai.review").current_mark_reviewed()
+  end,
+})
+R.add({
   id = "ai.scope",
   title = "İnceleme kapsamını göster",
   desc = "Başlangıç kaydına alınan / dışlanan dosyalar ve sınırlar",

@@ -36,12 +36,31 @@ function M.save(buf)
   end
   local sync = require("noctis.sync")
   local changed = sync.disk_changed(buf)
-  if changed or sync.has_conflict(buf) then
+  local c = vim.b[buf].noctis_conflict
+  if changed or (c and c.reason ~= "markers") then
     return sync.resolve(buf, { on_save = true })
   end
+  if c and c.reason == "markers" then
+    local has_markers = false
+    for _, l in ipairs(api.nvim_buf_get_lines(buf, 0, -1, false)) do
+      if l:match("^<<<<<<< ") or l:match("^>>>>>>> ") then
+        has_markers = true
+        break
+      end
+    end
+    if has_markers and vim.fn.confirm("Dosyada hâlâ çakışma işaretleri (<<<<<<< / >>>>>>>) var. Yine de kaydedilsin mi?", "&Kaydet\n&Vazgeç", 2) ~= 1 then
+      return
+    end
+  end
+  -- Disk sürümü kullanıcı tarafından kabul edildiyse (birleştirme) ve o andan
+  -- beri değişmediyse, yerleşik "okunduktan sonra değişti" sorusu atlanır.
+  local force = vim.b[buf].noctis_ack == true
   api.nvim_buf_call(buf, function()
-    vim.cmd("write")
+    vim.cmd(force and "write!" or "write")
   end)
+  if not vim.bo[buf].modified then
+    vim.b[buf].noctis_ack = nil
+  end
 end
 
 function M.save_all()
