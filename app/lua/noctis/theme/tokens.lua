@@ -38,33 +38,60 @@ function M.contrast(a, b)
 end
 
 ---@param p table base palette from palettes.lua
-function M.derive(p)
+---@param opts? {transparent?:boolean}
+function M.derive(p, opts)
+  opts = opts or {}
   local b = M.blend
   local t = vim.deepcopy(p)
-  t.fg_dim = b(p.muted, p.bg, 0.62) -- line numbers, subtle hints
+  -- Two optional palette knobs keep one set of formulas valid on both grounds:
+  -- a light ground shows a tint more strongly than a dark one (`tint` scales
+  -- every background tint), and dim text needs more weight there (`dim`).
+  local k = p.tint or 1
+  local function tint(fg, alpha, over)
+    return b(fg, over or p.bg, alpha * k)
+  end
+  t.fg_dim = b(p.muted, p.bg, p.dim or 0.62) -- line numbers, subtle hints
   t.fg_subtle = b(p.fg, p.bg, 0.85)
-  t.cursorline = b(p.fg, p.bg, 0.045)
-  t.panel_cursor = b(p.accent, p.panel, 0.16)
-  t.visual = b(p.accent, p.bg, 0.26)
-  t.search = b(p.warning, p.bg, 0.30)
+  -- Code punctuation sits between muted and fg, so brackets and delimiters
+  -- don't share the grey of inactive UI chrome; operators get a faint accent2 tint.
+  t.punct = b(p.fg, p.muted, 0.30)
+  t.operator = b(p.accent2, t.punct, 0.22)
+  -- Popup borders: visible against the float fill (the base `border` is for
+  -- separators, where a near-invisible line is the point).
+  t.border_float = b(p.muted, p.float, 0.46)
+  if opts.transparent then
+    -- The terminal's own background shows through, so a 4.5% neutral band
+    -- (tuned against our bg) can turn into a dark hole. A faint accent tint
+    -- reads as a highlight on any background.
+    t.cursorline = tint(p.accent, 0.10)
+  else
+    t.cursorline = b(p.fg, p.bg, 0.045)
+  end
+  t.panel_cursor = tint(p.accent, 0.16, p.panel)
+  t.visual = tint(p.accent, 0.26)
+  t.search = tint(p.warning, 0.30)
   t.cursearch = p.warning
-  t.match = b(p.accent2, p.bg, 0.22)
-  t.diff_add = b(p.success, p.bg, 0.14)
-  t.diff_add_text = b(p.success, p.bg, 0.30)
-  t.diff_del = b(p.error, p.bg, 0.14)
-  t.diff_del_text = b(p.error, p.bg, 0.30)
-  t.diff_change = b(p.syntax.type, p.bg, 0.11)
-  t.diff_text = b(p.syntax.type, p.bg, 0.26)
-  t.err_bg = b(p.error, p.bg, 0.10)
-  t.warn_bg = b(p.warning, p.bg, 0.10)
-  t.info_bg = b(p.accent2, p.bg, 0.08)
-  t.hint_bg = b(p.accent, p.bg, 0.08)
-  t.ok_bg = b(p.success, p.bg, 0.10)
-  t.accent_bg = b(p.accent, p.float, 0.22)
+  t.match = tint(p.accent2, 0.22)
+  t.diff_add = tint(p.success, 0.14)
+  t.diff_add_text = tint(p.success, 0.30)
+  t.diff_del = tint(p.error, 0.14)
+  t.diff_del_text = tint(p.error, 0.30)
+  t.diff_change = tint(p.syntax.type, 0.11)
+  t.diff_text = tint(p.syntax.type, 0.26)
+  t.err_bg = tint(p.error, 0.10)
+  t.warn_bg = tint(p.warning, 0.10)
+  t.info_bg = tint(p.accent2, 0.08)
+  t.hint_bg = tint(p.accent, 0.08)
+  t.ok_bg = tint(p.success, 0.10)
+  -- Selected row in menus and pickers: strong enough to find at a glance, light
+  -- enough that muted paths and descriptions on it still pass AA. Not scaled
+  -- by `tint`: on a light ground the hue already carries the selection.
+  t.accent_bg = b(p.accent, p.float, 0.14)
   t.accent_soft = b(p.accent, p.bg, 0.55)
+  t.accent_hi = b(p.accent, p.fg, 0.72) -- accent text that must stay readable over a selected row
   t.info = p.accent2
   t.hint = b(p.accent, p.fg, 0.7)
-  t.flash = b(p.accent2, p.bg, 0.18) -- highlight for lines changed externally
+  t.flash = tint(p.accent2, 0.18) -- highlight for lines changed externally
   t.ws = b(p.muted, p.bg, 0.30) -- visible whitespace characters
   t.indent = b(p.border, p.bg, 0.75) -- indent guides
   -- Typing animation steps (ease-out); same count as LEVELS in typing.lua

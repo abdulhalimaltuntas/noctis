@@ -461,4 +461,76 @@ H.test("can be turned off; disabled automatically in 256-color mode", function()
   vim.cmd("bwipeout!")
 end)
 
+H.suite("Theme and contrast")
+
+H.test("every theme passes the contrast audit (AA text, 3:1 dim text, 2:1 popup borders)", function()
+  local problems = require("noctis.theme").audit()
+  local lines = {}
+  for i = 1, math.min(#problems, 10) do
+    local p = problems[i]
+    lines[#lines + 1] = ("%s %s %.2f < %.1f (%s on %s)"):format(p.theme, p.group, p.ratio, p.min, p.fg, p.bg)
+  end
+  H.eq(#problems, 0, "low-contrast pairs:\n" .. table.concat(lines, "\n"))
+end)
+
+H.test("each variant sets 'background'; Daybreak is light and its terminal palette stays readable", function()
+  local theme = require("noctis.theme")
+  local tokens = require("noctis.theme.tokens")
+  theme.apply("daybreak")
+  H.eq(vim.o.background, "light")
+  H.eq(vim.g.colors_name, "daybreak")
+  -- ANSI "black" is dark and "white" a readable grey on the light ground
+  H.ok(tokens.contrast(vim.g.terminal_color_0, theme.tokens.bg) >= 4.5, "color0 readable")
+  H.ok(tokens.contrast(vim.g.terminal_color_7, theme.tokens.bg) >= 4.5, "color7 readable")
+  for _, name in ipairs({ "midnight-violet", "glacier", "amber" }) do
+    theme.apply(name)
+    H.eq(vim.o.background, "dark", name)
+  end
+  theme.apply("midnight-violet")
+end)
+
+H.test(":set background=light switches to Daybreak; dark returns to the last dark theme", function()
+  local theme = require("noctis.theme")
+  vim.cmd("colorscheme glacier")
+  H.eq(vim.g.colors_name, "glacier")
+  vim.o.background = "light"
+  H.eq(vim.g.colors_name, "daybreak")
+  H.eq(vim.o.background, "light")
+  vim.o.background = "dark"
+  H.eq(vim.g.colors_name, "glacier", "back to the dark theme in use before")
+  -- an explicit :colorscheme is respected as is
+  vim.cmd("colorscheme amber")
+  H.eq(vim.g.colors_name, "amber")
+  H.eq(vim.o.background, "dark")
+  theme.apply("midnight-violet")
+end)
+
+H.test("transparent mode: no editor background; the cursor line is a tint, not a dark band", function()
+  local cfg = require("noctis.config").options
+  local theme = require("noctis.theme")
+  local tokens = require("noctis.theme.tokens")
+  cfg.transparent = true
+  theme.apply("midnight-violet")
+  H.eq(vim.api.nvim_get_hl(0, { name = "Normal" }).bg, nil, "Normal bg is NONE")
+  local cl = ("#%06X"):format(vim.api.nvim_get_hl(0, { name = "CursorLine" }).bg)
+  local p = require("noctis.theme.palettes")["midnight-violet"]
+  H.eq(cl, tokens.blend(p.accent, p.bg, 0.10))
+  cfg.transparent = false
+  theme.apply("midnight-violet")
+end)
+
+H.test("code punctuation and popup borders no longer reuse the UI chrome grey", function()
+  local theme = require("noctis.theme")
+  theme.apply("midnight-violet")
+  local function fg(g)
+    return vim.api.nvim_get_hl(0, { name = g, link = false }).fg
+  end
+  local muted = tonumber(theme.tokens.muted:sub(2), 16)
+  H.ok(fg("Delimiter") ~= muted, "Delimiter")
+  H.ok(fg("Operator") ~= muted and fg("Operator") ~= fg("Delimiter"), "Operator has its own tone")
+  H.ok(fg("@punctuation.bracket") == fg("Delimiter"), "brackets match delimiters")
+  local border = tonumber(theme.tokens.border:sub(2), 16)
+  H.ok(fg("FloatBorder") ~= border, "popup border is not the separator color")
+end)
+
 H.done()

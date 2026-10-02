@@ -4,10 +4,12 @@
 -- Invalid values are reported with an explanation at startup and replaced by
 -- the default. Every field is optional.
 return {
-  -- Theme: "midnight-violet" | "glacier" | "amber"  (also Space u t)
+  -- Theme: "midnight-violet" | "glacier" | "amber" | "daybreak" (light)  (also Space u t)
+  -- `:set background=light` switches to Daybreak for the session; `dark` switches back.
   -- theme = "midnight-violet",
 
-  -- Let the terminal provide the editor background (transparency is a terminal feature)
+  -- Let the terminal provide the editor background (transparency is a terminal feature).
+  -- The cursor line then becomes a faint accent tint so it reads on any background.
   -- transparent = false,
 
   -- Nerd Font icons. Set to false without such a font; the interface still works fully.

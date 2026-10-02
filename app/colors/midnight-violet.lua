@@ -1,2 +1,2 @@
 -- :colorscheme midnight-violet
-require("noctis.theme").apply("midnight-violet")
+require("noctis.theme").load("midnight-violet")

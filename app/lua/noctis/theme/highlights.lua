@@ -15,7 +15,7 @@ function M.build(c, opts)
   h.Normal = { fg = c.fg, bg = bg }
   h.NormalNC = { fg = c.fg, bg = bg }
   h.NormalFloat = { fg = c.fg, bg = c.float }
-  h.FloatBorder = { fg = c.border, bg = c.float }
+  h.FloatBorder = { fg = c.border_float, bg = c.float }
   h.FloatTitle = { fg = c.accent, bg = c.float, bold = true }
   h.FloatFooter = { fg = c.muted, bg = c.float }
   h.NoctisPanel = { fg = c.fg, bg = panel }
@@ -77,11 +77,11 @@ function M.build(c, opts)
   h.PmenuKind = { fg = c.accent2, bg = c.float }
   h.PmenuKindSel = { fg = c.accent2, bg = c.accent_bg }
   h.PmenuExtra = { fg = c.muted, bg = c.float }
-  h.PmenuExtraSel = { fg = c.muted, bg = c.accent_bg }
+  h.PmenuExtraSel = { fg = c.fg_subtle, bg = c.accent_bg }
   h.PmenuSbar = { bg = c.float }
   h.PmenuThumb = { bg = c.border }
   h.PmenuMatch = { fg = c.accent, bold = true }
-  h.PmenuMatchSel = { fg = c.accent, bg = c.accent_bg, bold = true }
+  h.PmenuMatchSel = { fg = c.accent_hi, bg = c.accent_bg, bold = true }
   h.PmenuBorder = { link = "FloatBorder" }
   h.ComplMatchIns = { fg = c.muted }
   h.SnippetTabstop = { bg = c.hint_bg }
@@ -121,7 +121,7 @@ function M.build(c, opts)
   h.Conditional = { fg = s.keyword }
   h.Repeat = { fg = s.keyword }
   h.Label = { fg = s.keyword }
-  h.Operator = { fg = c.muted }
+  h.Operator = { fg = c.operator }
   h.Keyword = { fg = s.keyword }
   h.Exception = { fg = s.keyword }
   h.PreProc = { fg = s.keyword }
@@ -136,7 +136,7 @@ function M.build(c, opts)
   h.Special = { fg = s.special }
   h.SpecialChar = { fg = s.special }
   h.Tag = { fg = s.keyword }
-  h.Delimiter = { fg = c.muted }
+  h.Delimiter = { fg = c.punct }
   h.SpecialComment = { fg = s.comment, bold = true }
   h.Debug = { fg = c.warning }
   h.Underlined = { underline = true }
@@ -178,9 +178,9 @@ function M.build(c, opts)
   h["@keyword.return"] = { fg = s.keyword, italic = true }
   h["@keyword.import"] = { fg = s.keyword }
   h["@keyword.operator"] = { fg = s.keyword }
-  h["@punctuation"] = { fg = c.muted }
-  h["@punctuation.bracket"] = { fg = c.muted }
-  h["@punctuation.delimiter"] = { fg = c.muted }
+  h["@punctuation"] = { fg = c.punct }
+  h["@punctuation.bracket"] = { fg = c.punct }
+  h["@punctuation.delimiter"] = { fg = c.punct }
   h["@punctuation.special"] = { fg = s.special }
   h["@comment"] = { link = "Comment" }
   h["@comment.todo"] = { fg = c.bg, bg = c.accent2, bold = true }
@@ -190,7 +190,7 @@ function M.build(c, opts)
   h["@tag"] = { fg = s.keyword }
   h["@tag.builtin"] = { fg = s.keyword }
   h["@tag.attribute"] = { fg = s.property, italic = true }
-  h["@tag.delimiter"] = { fg = c.muted }
+  h["@tag.delimiter"] = { fg = c.punct }
   h["@markup.heading"] = { fg = c.accent, bold = true }
   h["@markup.strong"] = { bold = true }
   h["@markup.italic"] = { italic = true }
@@ -243,7 +243,7 @@ function M.build(c, opts)
   h.SnacksPickerPreviewTitle = { fg = c.bg, bg = c.accent2, bold = true }
   h.SnacksPickerInputBorder = { fg = c.accent_soft, bg = c.float }
   h.SnacksPickerPrompt = { fg = c.accent, bg = c.float }
-  h.SnacksPickerMatch = { fg = c.accent, bold = true }
+  h.SnacksPickerMatch = { fg = c.accent_hi, bold = true }
   h.SnacksPickerListCursorLine = { bg = c.accent_bg }
   h.SnacksPickerCursorLine = { bg = c.accent_bg }
   h.SnacksPickerDir = { fg = c.muted }
@@ -296,7 +296,7 @@ function M.build(c, opts)
   h.BlinkCmpMenuBorder = { link = "FloatBorder" }
   h.BlinkCmpMenuSelection = { link = "PmenuSel" }
   h.BlinkCmpLabel = { fg = c.fg }
-  h.BlinkCmpLabelMatch = { fg = c.accent, bold = true }
+  h.BlinkCmpLabelMatch = { fg = c.accent_hi, bold = true }
   h.BlinkCmpLabelDetail = { fg = c.muted }
   h.BlinkCmpLabelDescription = { fg = c.muted }
   h.BlinkCmpLabelDeprecated = { fg = c.fg_dim, strikethrough = true }
@@ -423,6 +423,14 @@ end
 --- 16-color ANSI palette for the integrated terminal
 function M.terminal_colors(c)
   local s = c.syntax
+  if c.background == "light" then
+    -- Light terminals keep "black" dark and "white" a readable grey (as GitHub
+    -- Light and Solarized Light do), so text a program prints in white stays visible.
+    return {
+      c.fg, c.error, c.success, c.warning, s.type, c.accent, c.accent2, c.muted,
+      c.fg_subtle, c.error, c.success, c.warning, s.type, c.accent, c.accent2, c.fg_dim,
+    }
+  end
   return {
     c.panel, c.error, c.success, c.warning, s.type, c.accent, c.accent2, c.fg_subtle,
     c.fg_dim, c.error, c.success, c.warning, s.type, c.accent, c.accent2, c.fg,

@@ -4,7 +4,7 @@
 local M = {}
 
 M.defaults = {
-  theme = "midnight-violet", -- "midnight-violet" | "glacier" | "amber"
+  theme = "midnight-violet", -- "midnight-violet" | "glacier" | "amber" | "daybreak" (light)
   transparent = false, -- let the terminal provide the editor background
   icons = true, -- Nerd Font icons; false uses plain characters
   borders = "rounded", -- "rounded" | "single" | "ascii"
@@ -63,7 +63,7 @@ M.defaults = {
 
 -- Schema: the defaults define the types; extra constraints live here.
 local enums = {
-  theme = { "midnight-violet", "glacier", "amber" },
+  theme = { "midnight-violet", "glacier", "amber", "daybreak" },
   borders = { "rounded", "single", "ascii" },
   clipboard = { "auto", "system", "internal" },
   ["ai.layout"] = { "auto", "right", "bottom", "full" },
