@@ -379,4 +379,76 @@ H.test("görev algılama projeden komut üretir ama hiçbir şey çalıştırmaz
   H.eq(#require("noctis.tasks").running(), 0)
 end)
 
+-- ── Yazma animasyonu ─────────────────────────────────────────────────────
+H.suite("Yazma animasyonu")
+local typing = require("noctis.ui.typing")
+
+local function glows(buf)
+  return vim.api.nvim_buf_get_extmarks(buf or 0, typing.ns, 0, -1, { details = true })
+end
+
+local function type_keys(keys)
+  vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes(keys, true, false, true), "xt", false)
+  vim.wait(20) -- InsertCharPre → zamanlanmış yerleştirme
+end
+
+H.test("yazılan her karakter parlar, söner ve iz bırakmaz; söz dizimi rengi korunur", function()
+  vim.o.termguicolors = true
+  typing.refresh()
+  H.ok(typing.active(), "truecolor ile etkin")
+  vim.cmd("enew")
+  local buf = vim.api.nvim_get_current_buf()
+  type_keys("iab c<Esc>")
+  local marks = glows(buf)
+  H.eq(#marks, 3, "boşluk hariç her karakter")
+  H.eq(marks[1][4].hl_group, "NoctisType1")
+  local hl = vim.api.nvim_get_hl(0, { name = "NoctisType1" })
+  H.ok(hl.bg ~= nil and hl.fg == nil, "yalnız zemin; ön plan (söz dizimi) değişmez")
+  H.wait(1000, function()
+    return #glows(buf) == 0 and typing.live_count() == 0
+  end, "animasyon bitti")
+  H.eq(vim.api.nvim_buf_get_lines(buf, 0, -1, false)[1], "ab c", "metin değişmedi")
+  vim.cmd("bwipeout!")
+end)
+
+H.test("yapıştırma/ani girdi, makro ve büyük dosya canlandırılmaz", function()
+  vim.cmd("enew")
+  local buf = vim.api.nvim_get_current_buf()
+  type_keys("i" .. string.rep("x", 40) .. "<Esc>")
+  H.eq(#glows(buf), 0, "tek seferde 40 karakter = yapıştırma")
+  vim.fn.setreg("q", "Ayz\27")
+  type_keys("@q")
+  H.eq(#glows(buf), 0, "makro")
+  vim.cmd("bwipeout!")
+  local path = H.tmpdir("anim") .. "/buyuk.txt"
+  H.write(path, string.rep("satır\n", 60000))
+  vim.cmd("edit " .. vim.fn.fnameescape(path))
+  H.ok(vim.b.noctis_bigfile)
+  type_keys("ggOab<Esc>")
+  H.eq(#glows(), 0, "büyük dosya")
+  vim.cmd("bwipeout!")
+end)
+
+H.test("kapatılabilir; 256 renk modunda kendiliğinden devre dışı", function()
+  vim.cmd("enew")
+  local buf = vim.api.nvim_get_current_buf()
+  typing.toggle()
+  H.ok(not typing.active(), "komutla kapandı")
+  type_keys("iab<Esc>")
+  H.eq(#glows(buf), 0)
+  typing.toggle()
+  H.ok(typing.active(), "yeniden açıldı")
+  vim.o.termguicolors = false
+  H.wait(500, function()
+    return not typing.active()
+  end, "termguicolors kapanınca devre dışı")
+  type_keys("Acd<Esc>")
+  H.eq(#glows(buf), 0)
+  vim.o.termguicolors = true
+  H.wait(500, function()
+    return typing.active()
+  end, "truecolor gelince yeniden etkin")
+  vim.cmd("bwipeout!")
+end)
+
 H.done()

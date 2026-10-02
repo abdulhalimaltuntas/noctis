@@ -67,6 +67,11 @@ function M.derive(p)
   t.flash = b(p.accent2, p.bg, 0.18) -- dışarıdan değişen satır vurgusu
   t.ws = b(p.muted, p.bg, 0.30) -- görünür boşluk karakterleri
   t.indent = b(p.border, p.bg, 0.75) -- girinti rehberleri
+  -- Yazma animasyonu basamakları (ease-out); typing.lua LEVELS ile aynı sayı
+  t.type_glow = {}
+  for i, a in ipairs({ 0.50, 0.38, 0.28, 0.19, 0.12, 0.06 }) do
+    t.type_glow[i] = b(p.accent, t.cursorline, a)
+  end
   return t
 end
 

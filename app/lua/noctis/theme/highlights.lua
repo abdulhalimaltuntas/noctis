@@ -337,6 +337,10 @@ function M.build(c, opts)
   h.NoctisError = { fg = c.error }
   h.NoctisBold = { fg = c.fg, bold = true }
   h.NoctisFlash = { bg = c.flash }
+  -- Yazma animasyonu: vurgu renginden satır zeminine sönen basamaklar
+  for i, col in ipairs(c.type_glow) do
+    h["NoctisType" .. i] = { bg = col }
+  end
 
   -- Dashboard
   h.NoctisDashTitle = { fg = c.accent, bold = true }

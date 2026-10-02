@@ -848,6 +848,16 @@ R.add({
   end,
 })
 R.add({
+  id = "ui.typing",
+  title = "Yazma animasyonu",
+  desc = "Yazılan karakterin kısa parlamasını aç/kapat (bu oturum için)",
+  group = "Arayüz",
+  keys = "<leader>ua",
+  run = function()
+    require("noctis.ui.typing").toggle()
+  end,
+})
+R.add({
   id = "ui.inlay",
   title = "Inlay hint'ler",
   group = "Arayüz",

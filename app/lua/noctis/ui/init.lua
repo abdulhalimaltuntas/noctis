@@ -5,6 +5,7 @@ function M.setup()
   require("noctis.ui.statusline").setup()
   require("noctis.ui.tabline").setup()
   require("noctis.ui.layout").setup()
+  require("noctis.ui.typing").setup()
   -- Tema değişince tüm çubuklar aynı anda yeniden çizilir
   vim.api.nvim_create_autocmd("User", {
     pattern = "NoctisThemeChanged",

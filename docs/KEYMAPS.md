@@ -149,5 +149,6 @@ Tüm komutlar `Space Space` komut paletinden adıyla aranabilir. Tablo Normal mo
 | `Space u n` | Göreli satır numaraları |  |
 | `Space u w` | Satır kaydırma (wrap) |  |
 | `Space u d` | Diagnostics görünürlüğü |  |
+| `Space u a` | Yazma animasyonu | Yazılan karakterin kısa parlamasını aç/kapat (bu oturum için) |
 | `Space u h` | Inlay hint'ler |  |
 

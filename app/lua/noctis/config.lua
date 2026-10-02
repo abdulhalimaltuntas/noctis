@@ -16,6 +16,7 @@ M.defaults = {
     cursorline = true,
     explorer_width = 30,
     wrap = false,
+    typing_animation = true, -- yazılan karakterin zemininde kısa parlama (truecolor gerekir)
   },
   diagnostics = {
     virtual_text = true,

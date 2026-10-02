@@ -28,6 +28,7 @@ return {
     -- cursorline = true,
     -- explorer_width = 30, -- 16..80
     -- wrap = false,
+    -- typing_animation = true, -- yazılan karakter kısa süre parlar (Space u a)
   },
 
   diagnostics = {
