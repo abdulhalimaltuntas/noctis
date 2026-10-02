@@ -158,6 +158,22 @@ if want 12-plain; then
   shot 12-plain
 fi
 
+# Gezgindeki AI değişiklik işaretleri (A/M/D) ve Git durumları
+if want 16-explorer-marks; then
+  reset_demo
+  start 16-explorer-marks 150 40 "return { $FAKE_PROFILE }" "$REPO/bin/noctis app/main.py"
+  keys " " "a" "n"; sleep 0.8
+  lit "Test"; keys Enter; sleep 2.5
+  lit "replace app/utils.py .2f .1f"; keys Enter
+  lit "write app/rapor.py x = 1\\n"; keys Enter
+  lit "delete tests/test_main.py"; keys Enter; sleep 1.5
+  keys C-\\ e; sleep 0.4
+  keys " " "e"; sleep 1.5
+  tm send-keys -t main ":redraw!" Enter; sleep 0.5
+  shot 16-explorer-marks
+  reset_demo
+fi
+
 # Gerçek Claude Code (kuruluysa): yalnız terminal uyumluluğu. Hiçbir prompt
 # gönderilmez; ücretli bir görev başlatılmaz. Ctrl-C aracın kendisine gider.
 if want 13-claude-code && command -v claude >/dev/null 2>&1; then

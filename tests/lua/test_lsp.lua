@@ -122,7 +122,7 @@ H.test("format_on_save dosya türüne göre açılınca kayıtta çalışır", f
 end)
 
 H.suite("Söz dizimi")
-H.test("Tree-sitter parser'ı yokken Vim söz dizimi çalışır", function()
+H.test("Tree-sitter parser'ı varsa etkin, yoksa Vim söz dizimi yedeği", function()
   vim.cmd("edit " .. vim.fn.fnameescape(root .. "/main.py"))
   local has_ts = require("noctis.lang").has_parser("python")
   if has_ts then
