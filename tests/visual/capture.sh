@@ -1,18 +1,20 @@
 #!/usr/bin/env bash
-# Gerçek PTY (tmux) içinde NOCTIS ekran yakalamaları.
-# Her sahne gerçek tuş vuruşlarıyla sürülür; yakalama terminalin o anki
-# içeriğidir (24 bit renk dahil). Tasarlanmış mockup değildir.
+# NOCTIS screenshots inside a real PTY (tmux).
+# Every scene is driven by real keystrokes; a capture is the terminal's
+# content at that moment (24-bit color included). These are not mockups.
 #
-# Gerekenler: tmux, python3, node + playwright (Chromium), kurulu eklentiler.
-# Kullanım: DATA=<XDG_DATA_HOME (eklentili)> DEMO=<demo proje> tests/visual/capture.sh [sahne...]
+# Requires: tmux, python3, node + playwright (Chromium), installed plugins.
+# Usage: DATA=<XDG_DATA_HOME with plugins> FONTS=<dir> [DEMO=<demo project>] tests/visual/capture.sh [scene...]
+#   Without DEMO, a fresh demo project is created with tests/visual/make-demo.sh.
 set -euo pipefail
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 VIS="$REPO/tests/visual"
 OUT="${OUT:-$REPO/docs/screenshots}"
-FONTS="${FONTS:?Nerd Font sembol fontu dizini gerekli (SymbolsNerdFontMono-Regular.ttf)}"
-DATA="${DATA:?eklentilerin kurulu olduğu XDG_DATA_HOME gerekli}"
-DEMO="${DEMO:?demo proje dizini gerekli}"
+FONTS="${FONTS:?directory with the Nerd Font symbols font required (SymbolsNerdFontMono-Regular.ttf)}"
+DATA="${DATA:?XDG_DATA_HOME with the plugins installed required}"
 WORK="$(mktemp -d)"
+DEMO="${DEMO:-$WORK/orders}"
+[ -d "$DEMO/.git" ] || "$VIS/make-demo.sh" "$DEMO" >/dev/null
 SOCK="noctis-shot-$$"
 mkdir -p "$OUT"
 trap 'tmux -L "$SOCK" kill-server 2>/dev/null || true; sleep 0.3; rm -rf "$WORK" 2>/dev/null || true' EXIT
@@ -27,14 +29,14 @@ EOF
 
 tm() { tmux -L "$SOCK" -f "$WORK/tmux.conf" "$@"; }
 
-# start <sahne> <sütun> <satır> [config.lua içeriği] [komut]
+# start <scene> <columns> <rows> [config.lua content] [command]
 start() {
   local name="$1" cols="$2" rows="$3" config="${4:-}" cmd="${5:-$REPO/bin/noctis}"
   tm kill-server 2>/dev/null || true
   local X="$WORK/$name"
   mkdir -p "$X/c/noctis" "$X/s/noctis/noctis" "$X/x"
   [ -n "$config" ] && printf '%s\n' "$config" > "$X/c/noctis/config.lua"
-  # Rehber yalnız ilk açılış sahnesinde görünsün
+  # The tour only shows in the first-launch scene
   if [ "$name" != "01-dashboard" ]; then
     printf '{"onboarding_done":true}' > "$X/s/noctis/noctis/ui.json"
   fi
@@ -57,11 +59,11 @@ shot() {
   echo "  ✓ $OUT/$name.png"
 }
 
-# Demo projeyi bilinen başlangıç durumuna getir (önceden var olan kullanıcı
-# düzenlemesi dahil), sahneler birbirini etkilemesin.
+# Reset the demo project to a known state (including a pre-existing user
+# edit), so scenes don't affect each other.
 reset_demo() {
   (cd "$DEMO" && git checkout -q -- . && git clean -qfd \
-    && sed -i 's/return f"{value:,.2f} {currency}"/return f"{value:,.2f} {currency}".replace(",", ".")/' app/utils.py)
+    && sed -i 's/return f"{currency}{value:,.2f}"/return f"{currency} {value:,.2f}"/' app/utils.py)
 }
 
 FAKE_PROFILE="ai = { profiles = { test = { label = 'Test CLI', cmd = { '$REPO/tools/noctis-fake-ai' } } } }"
@@ -85,7 +87,7 @@ fi
 if want 03-palette; then
   start 03-palette 120 35 "" "$REPO/bin/noctis app/main.py"
   keys " " " "; sleep 0.5
-  lit "ara"
+  lit "find"
   shot 03-palette
 fi
 
@@ -102,13 +104,13 @@ if want 05-ai-workbench; then
   lit "Test"; keys Enter; sleep 2.5
   lit "color"; keys Enter
   lit "replace app/utils.py .2f .1f"; keys Enter
-  lit "write app/rapor.py def rapor():\\n    return 'hazır'\\n"; keys Enter
+  lit "write app/report.py def report():\\n    return 'ready'\\n"; keys Enter
   sleep 1.5
   shot 05-ai-workbench
 fi
 
 if want 06-ai-changes; then
-  # 05 ile aynı oturumdan devam eder (aralık değişiklikleri görünür)
+  # Continues the session from 05 (the interval changes are visible)
   keys C-\\ e; sleep 0.4
   keys " " "a" "d"; sleep 1
   shot 06-ai-changes
@@ -154,18 +156,18 @@ fi
 
 if want 12-plain; then
   start 12-plain 100 30 "return { icons = false, borders = 'ascii' }" "$REPO/bin/noctis app/main.py"
-  keys " " " "; sleep 0.5; lit "tema"
+  keys " " " "; sleep 0.5; lit "theme"
   shot 12-plain
 fi
 
-# Gezgindeki AI değişiklik işaretleri (A/M/D) ve Git durumları
+# AI change marks (A/M/D) and Git status in the explorer
 if want 16-explorer-marks; then
   reset_demo
   start 16-explorer-marks 150 40 "return { $FAKE_PROFILE }" "$REPO/bin/noctis app/main.py"
   keys " " "a" "n"; sleep 0.8
   lit "Test"; keys Enter; sleep 2.5
   lit "replace app/utils.py .2f .1f"; keys Enter
-  lit "write app/rapor.py x = 1\\n"; keys Enter
+  lit "write app/report.py x = 1\\n"; keys Enter
   lit "delete tests/test_main.py"; keys Enter; sleep 1.5
   keys C-\\ e; sleep 0.4
   keys " " "e"; sleep 1.5
@@ -174,8 +176,8 @@ if want 16-explorer-marks; then
   reset_demo
 fi
 
-# Gerçek Claude Code (kuruluysa): yalnız terminal uyumluluğu. Hiçbir prompt
-# gönderilmez; ücretli bir görev başlatılmaz. Ctrl-C aracın kendisine gider.
+# Real Claude Code (if installed): terminal compatibility only. No prompt is
+# sent; no paid task is started. Ctrl-C goes to the tool itself.
 if want 13-claude-code && command -v claude >/dev/null 2>&1; then
   reset_demo
   start 13-claude-code 160 45 "" "$REPO/bin/noctis app/main.py"
@@ -190,4 +192,4 @@ if want 13-claude-code && command -v claude >/dev/null 2>&1; then
   reset_demo
 fi
 
-echo "Bitti: $OUT"
+echo "Done: $OUT"

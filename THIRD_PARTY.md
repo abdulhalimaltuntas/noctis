@@ -1,12 +1,12 @@
-# Üçüncü taraf bileşenler
+# Third-party components
 
-NOCTIS aşağıdaki bileşenlerin kaynak kodunu **içermez**; eklentiler
-`noctis --setup` sırasında kendi depolarından, `app/lazy-lock.json`
-dosyasındaki commit'lerle indirilir ve kendi lisanslarıyla dağıtılır.
+NOCTIS **does not include** the source code of the components below; plugins
+are downloaded from their own repositories during `noctis --setup`, at the
+commits in `app/lazy-lock.json`, and are distributed under their own licenses.
 
-| Bileşen | Kilitli sürüm | Lisans | Depo |
+| Component | Pinned version | License | Repository |
 | --- | --- | --- | --- |
-| Neovim | ≥ 0.12.0 (test: 0.12.4) — kullanıcı kurar | Apache-2.0 / Vim lisansı | https://github.com/neovim/neovim |
+| Neovim | ≥ 0.12.0 (tested: 0.12.4) — installed by the user | Apache-2.0 / Vim license | https://github.com/neovim/neovim |
 | lazy.nvim | 85c7ff3 (v11.17.5) | Apache-2.0 | https://github.com/folke/lazy.nvim |
 | snacks.nvim | 882c996 | Apache-2.0 | https://github.com/folke/snacks.nvim |
 | which-key.nvim | 3aab214 | Apache-2.0 | https://github.com/folke/which-key.nvim |
@@ -18,14 +18,14 @@ dosyasındaki commit'lerle indirilir ve kendi lisanslarıyla dağıtılır.
 | mason.nvim | 2a6940a | Apache-2.0 | https://github.com/mason-org/mason.nvim |
 | mini.icons | f642e3b | MIT | https://github.com/nvim-mini/mini.icons |
 
-İsteğe bağlı harici araçlar (kullanıcı kurar; NOCTIS bunları dağıtmaz):
-ripgrep, git, lazygit, tree-sitter CLI, dil sunucuları ve formatter'lar
+Optional external tools (installed by the user; NOCTIS doesn't distribute them):
+ripgrep, git, lazygit, the tree-sitter CLI, language servers and formatters
 (pyright, typescript-language-server, vscode-langservers-extracted,
 lua-language-server, bash-language-server, ruff, prettier, stylua, shfmt),
-AI CLI'leri (Claude Code, Codex CLI, Kimi Code).
+AI CLIs (Claude Code, Codex CLI, Kimi Code).
 
-Ekran görüntüleri üretilirken kullanılan Nerd Font sembol fontu
-(Symbols Nerd Font, MIT) depoya dahil edilmemiştir.
+The Nerd Font symbols font used to render the screenshots (Symbols Nerd Font,
+MIT) is not included in the repository.
 
-Tasarım ve etkileşim fikirleri açısından LazyVim'den (Apache-2.0) ilham
-alınmıştır; LazyVim kaynak kodu kopyalanmamıştır.
+Design and interaction ideas were inspired by LazyVim (Apache-2.0); no LazyVim
+source code was copied.

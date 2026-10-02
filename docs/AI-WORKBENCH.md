@@ -1,225 +1,230 @@
-# AI Workbench rehberi
+# AI Workbench guide
 
-AI Workbench, mevcut AI kodlama CLI'lerini (Codex CLI, Claude Code, Kimi Code
-veya kendi tanımladığınız bir araç) NOCTIS içinde **gerçek terminal
-oturumlarında** çalıştırır ve bu araçların (ya da başka herhangi bir programın)
-proje dosyalarına yaptığı değişiklikleri canlı izler, incelemenizi ve gerekirse
-korumalı biçimde geri almanızı sağlar.
+The AI Workbench runs existing AI coding CLIs (Codex CLI, Claude Code, Kimi Code
+or a tool you define) inside NOCTIS in **real terminal sessions**, watches the
+changes these tools (or any other program) make to project files live, and lets
+you review them and, if needed, revert them safely.
 
-NOCTIS yeni bir AI sohbet servisi veya model API katmanı değildir: aracın kendi
-hesabını, oturum açma akışını, izinlerini ve ağ davranışını kullanır. NOCTIS API
-anahtarı saklamaz, araç izinlerini değiştirmez, kaynak kodu veya terminal
-dökümünü dış bir servise göndermez ve hiçbir AI aracını kendiliğinden başlatmaz.
+NOCTIS is not a new AI chat service or model API layer: it uses the tool's own
+account, login flow, permissions and network behavior. NOCTIS stores no API
+keys, doesn't change tool permissions, never sends source code or terminal
+transcripts to an external service, and never starts an AI tool on its own.
 
 ![AI Workbench](screenshots/05-ai-workbench.png)
 
-## Hızlı başlangıç
+## Quick start
 
-| Kısayol | İşlem |
+| Key | Action |
 | --- | --- |
-| `Space a n` | Araç seç ve yeni oturum başlat (önce başlangıç kaydı alınır) |
-| `Space a a` | Paneli göster → odakla → gizle (gizlemek süreci durdurmaz) |
-| `Space a s` | Oturumlar ve "Değişiklikler" görünümü arasında geç |
-| `Space a d` | İnceleme aralığındaki değişiklikleri göster |
-| `Space a c` | Aralığı kapat, yeni başlangıç kaydı al (dosyalara dokunmaz) |
-| `Space a f` | AI terminaline odaklan |
-| `Space a h` / `a U` / `a m` | Editördeki dosyada: hunk geri al / dosyayı geri al / incelendi işaretle |
-| `Space a i` | Kapsam ayrıntısı (kaydedilen / dışlanan dosyalar, sınırlar) |
-| `Space a x` / `a r` | Oturumu durdur / yeniden başlat (onaylı) |
-| `Space a R` | Aracın önceki oturumuna devam et (yalnız belgelenmiş bayrakla) |
-| `Space a e` | Seçimi bağlam olarak hazırla (önce gösterilir; Enter gönderilmez) |
-| `Ctrl-\ e` | AI terminalinden editöre dön |
+| `Space a n` | Pick a tool and start a new session (the baseline is recorded first) |
+| `Space a a` | Show the panel → focus it → hide it (hiding doesn't stop the process) |
+| `Space a s` | Switch between sessions and the "Changes" view |
+| `Space a d` | Show the changes in the review interval |
+| `Space a c` | Close the interval and take a new baseline (doesn't touch files) |
+| `Space a f` | Focus the AI terminal |
+| `Space a h` / `a U` / `a m` | For the file in the editor: revert hunk / revert file / mark reviewed |
+| `Space a i` | Scope details (recorded / excluded files, limits) |
+| `Space a x` / `a r` | Stop / restart the session (with confirmation) |
+| `Space a R` | Resume the tool's previous session (only via its documented flag) |
+| `Space a e` | Prepare the selection as context (shown first; Enter isn't sent) |
+| `Ctrl-\ e` | Back from the AI terminal to the editor |
 
-Terminal odağındayken `Esc` ve `Ctrl-C` dahil tüm tuşlar araca gider (aracın
-kendi davranışı korunur). Bu, gerçek PTY'de doğrulanmıştır: `Ctrl-C` araca
-SIGINT olarak ulaşır ve oturum durumu kanıta göre "çıktı (130)" olur.
+While the terminal has focus, every key goes to the tool, `Esc` and `Ctrl-C`
+included (the tool's own behavior is kept). This was verified in a real PTY:
+`Ctrl-C` reaches the tool as SIGINT, and the session status becomes
+"exited (130)" based on evidence.
 
-## Profiller
+## Profiles
 
-| Profil | Executable | Sürüm sorgusu | Devam (resume) | Kaynak |
+| Profile | Executable | Version query | Resume | Source |
 | --- | --- | --- | --- | --- |
-| Claude Code | `claude` | `claude --version` | `claude --continue` (dizindeki son konuşma) | [CLI reference](https://code.claude.com/docs/en/cli-reference) |
-| Codex CLI | `codex` | `codex --version` | `codex resume --last` | [openai/codex](https://github.com/openai/codex) (`codex-rs/cli`), [belgeler](https://developers.openai.com/codex/cli) |
-| Kimi Code | `kimi` | `kimi --version` | `kimi --continue` (dizindeki son oturum) | [kimi komutu](https://www.kimi.com/code/docs/en/kimi-code-cli/reference/kimi-command.html), [MoonshotAI/kimi-code](https://github.com/MoonshotAI/kimi-code) |
-| Özel | sizin belirlediğiniz argüman dizisi | isteğe bağlı | — | `config.lua` |
+| Claude Code | `claude` | `claude --version` | `claude --continue` (latest conversation in the directory) | [CLI reference](https://code.claude.com/docs/en/cli-reference) |
+| Codex CLI | `codex` | `codex --version` | `codex resume --last` | [openai/codex](https://github.com/openai/codex) (`codex-rs/cli`), [docs](https://developers.openai.com/codex/cli) |
+| Kimi Code | `kimi` | `kimi --version` | `kimi --continue` (latest session in the directory) | [kimi command](https://www.kimi.com/code/docs/en/kimi-code-cli/reference/kimi-command.html), [MoonshotAI/kimi-code](https://github.com/MoonshotAI/kimi-code) |
+| Custom | the argument list you define | optional | — | `config.lua` |
 
-Varsayılan başlatma **bayraksızdır** (aracın normal etkileşimli modu). Yukarıdaki
-bayraklar yalnızca ilgili aracın resmi belgelerinde/kaynağında doğrulandığı için
-kullanılır; başka bayrak eklenmez. Not: Python tabanlı eski `kimi-cli`
-arşivlenmiştir; profil, yerine geçen Kimi Code CLI'yi (`kimi`) hedefler.
+The default launch uses **no flags** (the tool's normal interactive mode). The
+flags above are used only because they were verified in each tool's official
+documentation/source; no other flags are added. Note: the older Python-based
+`kimi-cli` is archived; the profile targets its replacement, the Kimi Code CLI
+(`kimi`).
 
-Program ve argümanlar kabuk metnine birleştirilmeden argüman dizisi olarak
-verilir. Özel profil örneği (`~/.config/noctis/config.lua`):
+The program and its arguments are passed as an argument list, never joined into
+shell text. A custom profile example (`~/.config/noctis/config.lua`):
 
 ```lua
 return {
   ai = {
     profiles = {
-      claude = { cmd = { "/opt/claude/bin/claude" } },       -- farklı konum
+      claude = { cmd = { "/opt/claude/bin/claude" } },       -- different location
       aider = { label = "Aider", cmd = { "aider", "--no-auto-commits" } },
-      codex = false,                                         -- listeden kaldır
+      codex = false,                                         -- remove from the list
     },
   },
 }
 ```
 
-Araç kurulu değilse oturum başlatılmaz; panel aranan executable'ı, resmi kurulum
-komutunu ve belge bağlantısını gösterir. Editör etkilenmez.
+If the tool isn't installed, no session is started; the panel shows the
+executable it looked for, the official install command and a link to the docs.
+The editor is unaffected.
 
-## Proje bağlama ve oturumlar
+## Project binding and sessions
 
-- Her oturumun **sabit bir proje kökü**, araç etiketi, benzersiz kimliği ve
-  terminal buffer'ı vardır. Başka bir projeye geçmek çalışan sürecin çalışma
-  klasörünü değiştirmez; panel üst çubuğu oturumun kökünü gösterir.
-- Birden fazla oturum açılabilir. Aynı çalışma ağacında ikinci bir araç
-  başlatılırken eşzamanlı yazma riski için onay istenir ve panelde uyarı
-  görünür. Önerilen kullanım: tek düzenleyen araç. NOCTIS diğer programların
-  dosyaya yazmasını kilitleyemez.
-- **Durum yalnız kanıta göre** gösterilir: *başlatılıyor* (süreç başladı, çıktı
-  yok), *çalışıyor* (süreç canlı ve çıktı üretti), *çıktı (kod)*, *başlatılamadı*.
-  "Görev tamamlandı", "onay bekliyor", token/maliyet gibi bilgiler terminal
-  metninden tahmin edilmez ve gösterilmez. Sürecin açık olması görevin
-  sürdüğünü, sessizlik bittiğini kanıtlamaz.
-- `Space q q` ile çıkarken çalışan oturumlar listelenir; süreçler çıkışta
-  sonlandırılır (arka planda kalma sözü verilmez).
-- Yerleşim: geniş ekranda sağ panel, orta genişlikte alt panel, dar ekranda tam
-  alan (tek görünümlü sekmeler). Pencere boyutu değişince yerleşim uyarlanır;
-  odak ve terminal (yazma) modu korunur.
+- Every session has a **fixed project root**, a tool label, a unique id and a
+  terminal buffer. Switching to another project doesn't change the running
+  process's working directory; the panel's top bar shows the session's root.
+- Several sessions can be open. Starting a second tool in the same working tree
+  asks for confirmation because of the concurrent-write risk, and a warning
+  shows in the panel. Recommended use: a single editing tool. NOCTIS can't lock
+  other programs out of writing files.
+- **Status is shown only by evidence**: *starting* (the process started, no
+  output yet), *running* (the process is alive and produced output),
+  *exited (code)*, *failed to start*. "Task finished", "waiting for approval",
+  tokens/cost and the like are never guessed from terminal text or shown. A live
+  process doesn't prove a task is in progress, and silence doesn't prove it's done.
+- When quitting with `Space q q`, running sessions are listed; the processes are
+  stopped on quit (there's no promise of them staying in the background).
+- Layout: a right panel on wide screens, a bottom panel at medium width, the full
+  area on narrow screens (tabs with one view). The layout adapts when the window
+  is resized; focus and terminal (insert) mode are kept.
 
-## İnceleme aralığı ve başlangıç kaydı
+## Review interval and baseline
 
-İlk AI oturumundan önce proje için bir **inceleme aralığı** başlatılır:
+Before the first AI session, a **review interval** is started for the project:
 
-1. Kapsamdaki metin dosyalarının **o anki disk içeriği** yerel, içerik
-   adresli bir depoya kopyalanır (yalnız hash değil — önceki içeriği
-   gösterebilmek ve geri alabilmek için).
-2. Git deposuysa mevcut commit, dal ve staged/unstaged/untracked durumu
-   **salt okunur** kaydedilir (`git --no-optional-locks`; index yenilemesi
-   bile yazılmaz). Branch, index, stash veya çalışma ağacı değiştirilmez —
-   bu, testlerde index baytları karşılaştırılarak doğrulanır.
-3. Kayıt tamamlanmadan araç başlatılmaz. Kayıt arayüzü bloklamadan parça parça
-   alınır.
+1. The **current disk content** of the in-scope text files is copied to a local,
+   content-addressed store (not just hashes — so the previous content can be
+   shown and reverted).
+2. For a Git repository, the current commit, branch and staged/unstaged/untracked
+   state are recorded **read-only** (`git --no-optional-locks`; not even an index
+   refresh is written). The branch, index, stash and working tree are never
+   changed — the tests verify this by comparing the index bytes.
+3. The tool isn't started until the baseline is complete. The baseline is
+   recorded in chunks without blocking the UI.
 
-Bu sayede **başlangıçtan önce var olan kullanıcı düzenlemeleri yeni AI
-değişikliği gibi gösterilmez**. İki karşılaştırma ayrı etiketlenir:
+This way **user edits that existed before the baseline are never shown as new
+AI changes**. The two comparisons are labeled separately:
 
-- **İnceleme aralığı** (varsayılan): başlangıç kaydından bu yana tespit edilen değişiklikler.
-- **Git** (`g` tuşu): çalışma ağacının HEAD'e göre farkı (başlangıç öncesi düzenlemeler dahil).
+- **Review interval** (default): changes detected since the baseline.
+- **Git** (`g` key): the working tree vs HEAD (edits from before the baseline included).
 
-Etkin aralık projeye bağlıdır ve NOCTIS yeniden açıldığında sürer (kapalıyken
-olan değişiklikler açılışta uzlaştırmayla yakalanır). Araç veya proje
-değiştirmek aralığı gizlice sıfırlamaz; yeni aralık yalnız `Space a c` ile başlar.
+The active interval belongs to the project and survives restarting NOCTIS
+(changes made while it was closed are caught by a reconcile at startup).
+Switching tools or projects never resets the interval behind your back; a new
+interval starts only with `Space a c`.
 
-### Kapsam ve sınırlar
+### Scope and limits
 
-| Kural | Varsayılan |
+| Rule | Default |
 | --- | --- |
-| `.gitignore` / `.ignore` | uygulanır (Git deposu olmasa da) |
-| Hiç izlenmeyen klasörler | `.git`, `node_modules`, `.venv`, `venv`, `__pycache__`, `dist`, `build`, `target`, `coverage`, önbellek klasörleri… |
-| Hassas dosyalar | `.env*`, `*.pem`, `*.key`, `id_rsa*`, `.npmrc`, `.netrc`, `credentials`, `secrets.*` … içerikleri **asla kopyalanmaz** |
-| Dosya başına boyut | 1 MiB (`ai.baseline.max_file_size`) |
-| Toplam içerik | 64 MiB (`ai.baseline.max_total_size`) |
-| İçeriği kaydedilen dosya sayısı | 5000 (`ai.baseline.max_files`) |
-| Sembolik bağlantılar | takip edilmez; proje dışına giden yollar izlenmez ve geri alınmaz |
-| Saklama | 14 gün, en çok 512 MB (`ai.retention_days`, `ai.max_store_mb`) |
-| Konum | `~/.local/state/noctis/noctis/ai/<proje-anahtarı>/` (proje dışında, 0700) |
+| `.gitignore` / `.ignore` | applied (even outside a Git repository) |
+| Folders never watched | `.git`, `node_modules`, `.venv`, `venv`, `__pycache__`, `dist`, `build`, `target`, `coverage`, cache folders… |
+| Sensitive files | `.env*`, `*.pem`, `*.key`, `id_rsa*`, `.npmrc`, `.netrc`, `credentials`, `secrets.*` … their content is **never copied** |
+| Size per file | 1 MiB (`ai.baseline.max_file_size`) |
+| Total content | 64 MiB (`ai.baseline.max_total_size`) |
+| Files with recorded content | 5000 (`ai.baseline.max_files`) |
+| Symbolic links | not followed; paths leading outside the project are neither watched nor reverted |
+| Retention | 14 days, at most 512 MB (`ai.retention_days`, `ai.max_store_mb`) |
+| Location | `~/.local/state/noctis/noctis/ai/<project-key>/` (outside the project, 0700) |
 
-Kapsam dışı bir dosya değişirse listede görünür, ancak **önceki içerik
-olmadığı** açıkça yazılır ve geri alma önerilmez. `Space a i` hangi dosyaların
-neden dışlandığını listeler.
+If an out-of-scope file changes, it shows up in the list, but it says clearly that
+**there is no previous content**, and no revert is offered. `Space a i` lists
+which files were excluded and why.
 
-## Canlı takip
+## Live tracking
 
-- Dosya oluşturma, değiştirme, silme, atomic-save (geçici dosya + rename),
-  yeni alt klasörler izlenir. Linux'ta libuv'nin `recursive` bayrağı
-  desteklenmediği (doğrulandı) için **her dizin ayrı izlenir** ve yeni dizinler
-  olay geldikçe eklenir. İzleme sınırı aşılırsa kalan kısım periyodik
-  uzlaştırmayla takip edilir ve bu panelde belirtilir.
-- Olaylar birleştirilir; kısa bir yazma-durulma denetiminden sonra diff
-  hesaplanır. Ölçülen gecikme: yazmanın bitişinden listede görünmeye
-  **~370 ms** (test: `tests/lua/test_ai.lua`).
-- Kaçırılan olaylar için odak dönüşünde ve düşük sıklıkta uzlaştırma
-  yapılır; her tuşta proje taranmaz. Aralık son taramanın süresine göre
-  uyarlanır: küçük projede `reconcile_ms` (varsayılan 4 sn), taraması yavaş
-  büyük projede en fazla 60 sn'de bir.
-- Bildirimler toplanır (en fazla birkaç saniyede bir tek mesaj); yeni dosyaya
-  zorla geçilmez. Kendi kaydettiğiniz dosyalar için bildirim gösterilmez
-  (listede yine görünür).
-- Gezginde aralıkta değişen dosyalar **A / M / D** ile işaretlenir.
+- File creation, modification, deletion, atomic saves (temp file + rename) and
+  new subfolders are tracked. libuv's `recursive` flag isn't supported on Linux
+  (verified), so **every directory is watched separately** and new directories
+  are added as events arrive. If the watch limit is exceeded, the rest is tracked
+  by a periodic reconcile, and the panel says so.
+- Events are coalesced; the diff is computed after a short write-settle check.
+  Measured latency from the end of a write to showing up in the list: **~370 ms**
+  (test: `tests/lua/test_ai.lua`).
+- For missed events, a reconcile runs when focus returns and at a low frequency;
+  the project isn't scanned on every keystroke. The interval adapts to how long
+  the last scan took: `reconcile_ms` (default 4 s) on small projects, at most once
+  every 60 s on large projects with slow scans.
+- Notifications are batched (at most one message every few seconds); you're
+  never forced into a new file. Files you saved yourself don't trigger a
+  notification (they still appear in the list).
+- In the explorer, files changed in the interval are marked **A / M / D**.
 
-**Kaynak atfı:** Dosya sistemi olayı değişikliği hangi programın yaptığını
-söylemez. Bu yüzden değişiklikler hiçbir zaman belirli bir araca atanmaz;
-etiket her zaman "inceleme aralığında tespit edilen değişiklik"tir. Siz veya
-başka bir araç aynı sırada yazarsa bu değişiklikler de aralığa girer.
+**Attribution:** a file system event doesn't say which program made a change.
+So changes are never attributed to a specific tool; the label is always
+"change detected in the review interval". If you or another tool write at the
+same time, those changes also land in the interval.
 
-### Açık buffer davranışı
+### Open buffer behavior
 
-1. **Buffer temizse**: diskteki kararlı içerik yeniden yüklenir; imleç ve
-   kaydırma korunur, değişen satırlar birkaç saniye ölçülü vurgulanır.
-   Yeniden yükleme `u` ile geri alınabilir.
-2. **Kaydedilmemiş düzenleme varsa**: otomatik yükleme veya kaydetme yapılmaz.
-   Buffer **ÇATIŞMA** olarak işaretlenir; kaydederken disk yeniden denetlenir.
-3. **Çatışmada** (`:NoctisConflict` veya kaydetme anında): karşılaştır,
-   3 yollu birleştir (taban: buffer'ın en son senkronize olduğu içerik — bu,
-   AI başlangıcıyla aynı olmak zorunda değildir), yerel sürümü yaz (ezilen disk
-   içeriği yedeklenir), disk sürümünü yükle (yerel kopya önce saklanır) veya
-   yerel içeriği ayrı dosyaya kopyala. Güvenilir taban yoksa manuel diff ve
-   ayrı kopya yolu sunulur.
-4. **Dosya silinmiş/taşınmışsa**: buffer içeriği kaybolmaz (değiştirilmiş
-   sayılır, çıkışta sorulur); aynı yola veya yeni konuma kaydedebilirsiniz.
+1. **Clean buffer**: the settled disk content is reloaded; the cursor and scroll
+   position are kept, and changed lines are highlighted briefly and subtly. The
+   reload can be undone with `u`.
+2. **Unsaved edits**: no automatic reload or save. The buffer is marked
+   **CONFLICT**; on save the disk is checked again.
+3. **On conflict** (`:NoctisConflict` or at save time): compare, 3-way merge
+   (base: the content the buffer was last in sync with — not necessarily the AI
+   baseline), write the local version (the overwritten disk content is backed
+   up), load the disk version (a local copy is kept first), or copy the local
+   content to a separate file. Without a reliable base, a manual diff and the
+   separate-copy path are offered.
+4. **File deleted/moved**: the buffer content is never lost (it counts as
+   modified and you're asked on quit); you can save to the same path or a new
+   location.
 
-AI terminalinde gösterilen ama diske yazılmamış bir öneri dosya değişikliği
-değildir; dosya durumu değişmeden hiçbir işaret konmaz.
+A suggestion shown in the AI terminal but never written to disk is not a file
+change; nothing is marked unless the file state changes.
 
-## İnceleme ve geri alma
+## Review and revert
 
-Değişiklik listesinde: `Enter` diff, `r` incelendi, `u` dosyayı geri al, `o` aç,
-`g` Git görünümü, `R` yenile, `q` gizle.
+In the change list: `Enter` diff, `r` reviewed, `u` revert file, `o` open,
+`g` Git view, `R` refresh, `q` hide.
 
-- Geniş ekranda (≥140 sütun) **yan yana**, dar ekranda **birleşik** diff açılır.
-  Ekleme/silme/değişiklik renkleri sabittir; dosya başına +/− satır sayısı
-  gösterilir. Binary dosyalarda metin diff'i yerine boyut durumu gösterilir.
-- **İncelendi** işareti içerik yeniden değişirse kendiliğinden geçersizleşir.
-  Bu sürümde araç doğrudan çalışma ağacına yazdığı için inceleme **sonradan**
-  yapılır; "incelendi" bir yazma öncesi onay değildir.
-- **Geri alma** (`X` hunk, `U`/`u` dosya, editörde `Space a h` / `Space a U`):
-  - Disk içeriği incelediğiniz sürümle hâlâ aynı olmalıdır; araya başka bir
-    yazma girdiyse işlem reddedilir ve farkı yeniden incelemeniz istenir.
-  - Dosyanın açık buffer'ında kaydedilmemiş düzenleme varsa reddedilir.
-  - Yalnız seçilen hunk/dosya değişir; diğer değişiklikler, önceki kullanıcı
-    düzenlemeleri ve Git index'i korunur. `git reset`, `git clean` veya proje
-    çapında geri dönüş kullanılmaz.
-  - Geri almadan önceki içerik `~/.local/state/noctis/noctis/recovered/`
-    altına kopyalanır; eklenmiş bir dosyanın geri alınması onu NOCTIS çöp
-    kutusuna taşır (`Space f T` ile geri gelir).
-  - Önceki içerik yoksa (kapsam dışı) bu açıkça söylenir ve işlem yapılmaz.
-- **Yeni aralık** (`Space a c`) dosyaları değiştirmez; eski kayıt saklama
-  süresi boyunca durur.
+- A **side-by-side** diff opens on wide screens (≥140 columns), a **unified** diff
+  on narrow ones. Add/delete/change colors are fixed; +/− line counts are shown
+  per file. Binary files show size information instead of a text diff.
+- The **reviewed** mark is invalidated automatically if the content changes
+  again. In this version the tool writes straight to the working tree, so review
+  happens **afterwards**; "reviewed" is not a pre-write approval.
+- **Revert** (`X` hunk, `U`/`u` file, `Space a h` / `Space a U` in the editor):
+  - The disk content must still match the version you reviewed; if another
+    write happened in between, the operation is refused and you're asked to
+    review the diff again.
+  - It's refused if the file's open buffer has unsaved edits.
+  - Only the chosen hunk/file changes; other changes, earlier user edits and the
+    Git index are kept. `git reset`, `git clean` or project-wide rollbacks are
+    never used.
+  - The content before the revert is copied to
+    `~/.local/state/noctis/noctis/recovered/`; reverting an added file moves it
+    to the NOCTIS trash (restore it with `Space f T`).
+  - Without previous content (out of scope), that's said clearly and nothing is done.
+- A **new interval** (`Space a c`) doesn't change files; the old record is kept
+  for the retention period.
 
-## Bağlam gönderme
+## Sending context
 
-`Space a e` (Normal veya Visual mod) seçili kodu `yol:satır` başlığı ve kod
-bloğu olarak hazırlar, **önce önizlemede gösterir**; onaylarsanız aracın giriş
-satırına köşeli parantezli yapıştırma ile eklenir. Enter gönderilmez — aracın
-içinde gözden geçirip kendiniz gönderirsiniz.
+`Space a e` (Normal or Visual mode) prepares the selected code as a `path:line`
+header plus a code block and **shows it in a preview first**; if you confirm, it's
+added to the tool's input line with a bracketed paste. Enter isn't sent — you
+review it inside the tool and send it yourself.
 
-## Doğrulanmış uyumluluk
+## Verified compatibility
 
-| Araç | Sürüm | Bu ortamda doğrulanan |
+| Tool | Version | Verified in this environment |
 | --- | --- | --- |
-| Claude Code | 2.1.287 | PTY'de açılış ve ilk kullanım ekranı (renkler, ASCII grafik, diff önizlemesi), 160→120 sütun yeniden boyutlandırmada yeniden çizim, panel yerleşim değişimi sırasında yazma modunun korunması. **Hiçbir prompt gönderilmedi**, ücretli görev başlatılmadı. Oturum açma ve dosya yazma akışı bu ortamda doğrulanmadı. |
-| Codex CLI | — | Bu ortamda kurulu değil; **doğrulanmadı**. Bayraklar resmi kaynaktan doğrulandı. |
-| Kimi Code | — | Bu ortamda kurulu değil; **doğrulanmadı**. Bayraklar resmi belgelerden doğrulandı. |
-| Test CLI (`tools/noctis-fake-ai`) | 1.0 | Uçtan uca: PTY, ANSI renkleri, proje kökü, normal yazma, atomic-save, oluşturma/silme, alt klasör, `.gitignore`, gizliyken çalışmaya devam, Ctrl-C (SIGINT), çıkış kodu, eksik executable |
+| Claude Code | 2.1.287 | Launch and first-run screen in a PTY (colors, ASCII art, diff preview), redraw on a 160→120 column resize, insert mode kept while the panel layout changes. **No prompt was sent**, no paid task was started. Login and the file-writing flow were not verified in this environment. |
+| Codex CLI | — | Not installed in this environment; **not verified**. Flags verified from the official source. |
+| Kimi Code | — | Not installed in this environment; **not verified**. Flags verified from the official docs. |
+| Test CLI (`tools/noctis-fake-ai`) | 1.0 | End to end: PTY, ANSI colors, project root, normal writes, atomic saves, create/delete, subfolders, `.gitignore`, keeps running while hidden, Ctrl-C (SIGINT), exit code, missing executable |
 
-Test CLI'sinin başarılı olması, üç gerçek aracın da tam olarak test edildiği
-anlamına gelmez.
+The test CLI passing doesn't mean all three real tools were fully tested.
 
-## Bilinen sınırlar
+## Known limits
 
-- Değişiklikler yazıldıktan sonra incelenir; yazma öncesi kabul/ret (patch veya
-  sandbox akışı) bu sürümde yoktur.
-- Değişikliklerin kaynağı doğrulanamaz (bkz. kaynak atfı).
-- Aracın kendi "onay bekliyor / bitti" durumu okunmaz.
-- Panel temaya uyar; terminalin içindeki renkler ve kontrol dizileri aracındır
-  (16 ANSI rengi temadan gelir; tema değişimi yalnız yeni oturumları etkiler).
+- Changes are reviewed after they are written; there's no pre-write
+  accept/reject (patch or sandbox flow) in this version.
+- The source of a change can't be verified (see attribution).
+- The tool's own "waiting for approval / done" state isn't read.
+- The panel follows the theme; colors and control sequences inside the terminal
+  belong to the tool (the 16 ANSI colors come from the theme; a theme change only
+  affects new sessions).

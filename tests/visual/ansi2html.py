@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""tmux `capture-pane -e -p` çıktısını (SGR renk kodlarıyla) HTML'e çevirir.
-Ekran görüntüleri gerçek terminal içeriğinden üretilir; tasarlanmış mockup değildir.
-Kullanım: ansi2html.py girdi.ansi çıktı.html "Başlık"
+"""Converts tmux `capture-pane -e -p` output (with SGR color codes) to HTML.
+Screenshots are produced from real terminal content; they are not design mockups.
+Usage: ansi2html.py input.ansi output.html "Title"
 """
 import html
 import re
@@ -29,23 +29,23 @@ SGR = re.compile(r"\x1b\[([0-9;:]*)m")
 
 
 def is_icon(ch: str) -> bool:
-    """Nerd Font ikonları özel kullanım alanlarındadır (PUA)."""
+    """Nerd Font icons live in the private use areas (PUA)."""
     o = ord(ch)
     return 0xE000 <= o <= 0xF8FF or o >= 0xF0000
 
 
 def render_cells(cells: list) -> str:
-    """(css, karakter) hücrelerini terminal ızgarasına sabitlenmiş HTML'e çevirir.
+    """Converts (css, char) cells to HTML pinned to the terminal cell grid.
 
-    Terminal her karakteri bir (geniş karakterde iki) hücreye yerleştirir;
-    glifin fonttaki genişliği sonraki hücreleri kaydırmaz. Tarayıcı ise yedek
-    fonttan gelen glifin (Nerd Font ikonu, kutu çizimi) kendi genişliğini
-    kullanır ve satırın geri kalanını kaydırır. Bu yüzden Latin dışı her
-    karakter sabit genişlikli bir kutuya konur.
+    A terminal places every character in one cell (two for wide characters);
+    a glyph's width in the font never shifts the following cells. A browser,
+    however, uses the own width of a glyph coming from a fallback font (Nerd
+    Font icon, box drawing) and shifts the rest of the line. So every
+    non-Latin character is put in a fixed-width box.
 
-    İkonlar: Symbols Nerd Font Mono glifleri 1em genişliğindedir (hücreden
-    geniş). kitty/WezTerm/Ghostty ikonun ardından boşluk varsa ikonu iki hücreye
-    yayar; yoksa hücreye sığdırır. Burada da aynısı yapılır.
+    Icons: Symbols Nerd Font Mono glyphs are 1em wide (wider than a cell).
+    kitty/WezTerm/Ghostty spread an icon over two cells when a space follows
+    it, and fit it into one cell otherwise. The same is done here.
     """
     out, cur_css, buf = [], None, []
 
@@ -65,7 +65,7 @@ def render_cells(cells: list) -> str:
         elif is_icon(ch):
             if i + 1 < len(cells) and cells[i + 1][1] == " ":
                 buf.append(f'<b class="c2 ic">{html.escape(ch)}</b>')
-                i += 1  # ardındaki boşluk hücresi ikona ait
+                i += 1  # the space cell after it belongs to the icon
             else:
                 buf.append(f'<b class="c1 ic1">{html.escape(ch)}</b>')
         else:
@@ -165,7 +165,7 @@ def convert(text: str, default_fg: str, default_bg: str) -> str:
             css_s = ";".join(css)
             line_cells.extend((css_s, ch) for ch in txt)
         out_lines.append("<div>" + render_cells(line_cells) + "</div>")
-    # white-space:pre içinde div'ler arası "\n" fazladan satır üretir
+    # inside white-space:pre, a "\n" between divs produces an extra line
     return "".join(out_lines)
 
 

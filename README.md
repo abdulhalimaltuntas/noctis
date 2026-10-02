@@ -49,6 +49,9 @@ not design mockups. How: [`tests/visual/`](tests/visual/). More images:
   color and fades out (~240 ms). Only the background is animated, so syntax
   colors stay intact. Skipped for pastes, macros and big files; toggle with
   `Space u a` or `ui.typing_animation = false`.
+
+  <img src="docs/screenshots/typing.gif" width="600" alt="Typing animation: typed characters glow and fade">
+
 - **AI Workbench**: AI CLIs run in real terminal sessions pinned to the
   project root. Before a tool starts, NOCTIS records the project's **on-disk
   content** as a baseline; every later file change is tracked, reviewed as a
@@ -251,10 +254,11 @@ Detailed verification list: [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md).
 ## Tests
 
 ```sh
-tests/run.sh             # all offline tests (launcher, core, AI tracking, safe mode)
-tests/run.sh --plugins   # + plugin UI and real language server (pyright) tests
-DATA=… tests/perf.sh     # startup time measurement
-tests/visual/capture.sh  # real-PTY screenshots
+tests/run.sh                               # all offline tests (launcher, core, AI tracking, safe mode)
+tests/run.sh --plugins                     # + plugin UI and real language server (pyright) tests
+DATA=… tests/perf.sh                       # startup time measurement
+DATA=… FONTS=… tests/visual/capture.sh     # real-PTY screenshots (demo from make-demo.sh)
+DATA=… FONTS=… tests/visual/typing-gif.sh  # the typing animation GIF
 ```
 
 Each suite runs with temporary XDG directories and never touches your setup.
