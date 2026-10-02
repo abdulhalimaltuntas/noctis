@@ -92,14 +92,14 @@ Every command can be found by name in the `Space Space` command palette. The tab
 | Key | Command | Description |
 | --- | --- | --- |
 | `Space a a` | Toggle AI Workbench | Hiding it doesn't stop the AI process |
-| `Space a n` | New AI session | Pick a tool (Codex, Claude Code, Kimi Code, custom); the review baseline is recorded first |
+| `Space a n` | New AI session | Pick a tool (Claude Code, Codex, Kimi Code, OpenCode, custom); the review baseline is recorded first |
 | `Space a s` | Switch between AI sessions |  |
 | `Space a d` | Review changes in the AI interval | File changes detected since the review baseline |
 | `Space a c` | Close the review interval, take a new baseline | Doesn't change any files; only records a new baseline |
 | `Space a f` | Focus the AI terminal |  |
 | `Space a x` | Stop AI session | Asks for confirmation; the process is terminated |
 | `Space a r` | Restart AI session |  |
-| `Space a R` | Resume the AI tool's previous session | Only via the tool's documented resume flag (claude -c, codex resume --last, kimi -c) |
+| `Space a R` | Resume the AI tool's previous session | Only via the tool's documented resume flag (claude -c, codex resume --last, kimi -c, opencode -c) |
 | `Space a h` | Revert this hunk to the review baseline | The interval change under the cursor in the editor; the disk must match the reviewed version |
 | `Space a U` | Revert this file to the review baseline | Asks for confirmation; refused if there is no previous content; current content is backed up first |
 | `Space a m` | Mark this file as reviewed | The mark is invalidated automatically if the content changes again |

@@ -22,7 +22,7 @@ Optional external tools (installed by the user; NOCTIS doesn't distribute them):
 ripgrep, git, lazygit, the tree-sitter CLI, language servers and formatters
 (pyright, typescript-language-server, vscode-langservers-extracted,
 lua-language-server, bash-language-server, ruff, prettier, stylua, shfmt),
-AI CLIs (Claude Code, Codex CLI, Kimi Code).
+AI CLIs (Claude Code, Codex CLI, Kimi Code, OpenCode).
 
 The Nerd Font symbols font used to render the screenshots (Symbols Nerd Font,
 MIT) is not included in the repository.

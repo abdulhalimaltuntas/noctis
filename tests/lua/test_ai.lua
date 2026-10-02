@@ -338,6 +338,78 @@ H.test("two sessions in one working tree: a concurrent-write warning shows, no s
   end)
 end)
 
+H.test("built-in OpenCode profile: found on PATH, version query, --continue resume, tracked writes", function()
+  -- A shim named `opencode` first on PATH: records its arguments, then runs the
+  -- test CLI. The real OpenCode needs network and an account, so it isn't used here.
+  local shimdir = H.tmpdir("opencode shim")
+  local shim = shimdir .. "/opencode"
+  H.write(shim, table.concat({
+    "#!/bin/sh",
+    'if [ "$1" = "--version" ]; then echo "opencode-shim 9.9.9"; exit 0; fi',
+    'printf "%s\\n" "$@" > "$SHIM_ARGS"',
+    'exec python3 "$SHIM_FAKE"',
+  }, "\n") .. "\n")
+  vim.uv.fs_chmod(shim, 493)
+  local path_before = vim.env.PATH
+  vim.env.PATH = shimdir .. ":" .. path_before
+  vim.env.SHIM_ARGS, vim.env.SHIM_FAKE = shimdir .. "/args", H.fake
+
+  local P = require("noctis.ai.profiles")
+  local _, order = P.all()
+  H.ok(vim.tbl_contains(order, "opencode"), "listed among the built-in profiles")
+  local p = P.get("opencode")
+  H.eq(p.label, "OpenCode")
+  H.eq(P.resolve(p), shim, "executable resolved from PATH")
+  local version
+  P.version(p, function(v)
+    version = v or "error"
+  end)
+  H.wait(5000, function()
+    return version ~= nil
+  end, "version query")
+  H.eq(version, "opencode-shim 9.9.9")
+
+  local s = assert(sessions.start(p, root, require("noctis.ai.workbench").prepare_window(), { resume = true }))
+  H.wait(5000, function()
+    return s.status == "running"
+  end, "running")
+  H.eq(H.read(shimdir .. "/args"), "--continue\n", "resume uses the verified --continue flag")
+  vim.fn.chansend(s.job, "write opencode.txt hello\n")
+  wait_change(t, "opencode.txt", "added")
+
+  -- Focusing asks for Terminal mode only while the tool runs: in an exited
+  -- terminal any key in Terminal mode would delete the buffer and the tool's
+  -- last output. (Headless Neovim can't really enter Terminal mode, so the
+  -- request itself is observed; the key behavior is verified in a real PTY.)
+  local wb = require("noctis.ai.workbench")
+  local inserts = 0
+  local cmd = vim.cmd
+  vim.cmd = setmetatable({}, {
+    __index = cmd,
+    __call = function(_, c, ...)
+      if c == "startinsert" then
+        inserts = inserts + 1
+      end
+      return cmd(c, ...)
+    end,
+  })
+  wb.show_view(s.id, true)
+  local running_inserts = inserts
+  vim.fn.chansend(s.job, "exit 0\n")
+  H.wait(5000, function()
+    return s.status == "exited"
+  end, "exited")
+  inserts = 0
+  wb.open({ focus = true })
+  vim.wait(50)
+  vim.cmd = cmd
+  H.ok(running_inserts > 0, "Terminal mode requested while the tool runs")
+  H.eq(inserts, 0, "no Terminal mode for an exited session")
+  H.ok(api.nvim_buf_is_valid(s.buf), "the exited tool's output is still there")
+  wb.hide()
+  vim.env.PATH = path_before
+end)
+
 H.test("a missing executable doesn't break the editor; a clear error is returned", function()
   local profile = require("noctis.ai.profiles").get("missing")
   local s, err = sessions.start(profile, root, require("noctis.ai.workbench").prepare_window(), {})

@@ -477,7 +477,7 @@ R.add({
 R.add({
   id = "ai.new",
   title = "New AI session",
-  desc = "Pick a tool (Codex, Claude Code, Kimi Code, custom); the review baseline is recorded first",
+  desc = "Pick a tool (Claude Code, Codex, Kimi Code, OpenCode, custom); the review baseline is recorded first",
   group = "AI",
   keys = "<leader>an",
   run = function()
@@ -544,7 +544,7 @@ R.add({
 R.add({
   id = "ai.resume",
   title = "Resume the AI tool's previous session",
-  desc = "Only via the tool's documented resume flag (claude -c, codex resume --last, kimi -c)",
+  desc = "Only via the tool's documented resume flag (claude -c, codex resume --last, kimi -c, opencode -c)",
   group = "AI",
   keys = "<leader>aR",
   run = function()

@@ -71,7 +71,7 @@ return {
   },
 
   ai = {
-    -- Profiles: extend the built-ins (claude, codex, kimi) or add your own.
+    -- Profiles: extend the built-ins (claude, codex, kimi, opencode) or add your own.
     -- cmd is always an argument list; it's never joined into shell text.
     profiles = {
       -- claude = { cmd = { "/opt/claude/bin/claude" } },          -- different location

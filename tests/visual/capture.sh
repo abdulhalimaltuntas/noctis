@@ -192,4 +192,21 @@ if want claude-code && command -v claude >/dev/null 2>&1; then
   reset_demo
 fi
 
+# Real OpenCode (if installed): terminal compatibility only, like Claude Code
+# above. No prompt is sent. Ctrl-C goes to the tool, which exits; NOCTIS then
+# leaves Terminal mode so the tool's last output stays on screen.
+if want opencode && command -v opencode >/dev/null 2>&1; then
+  reset_demo
+  start opencode 160 45 "" "$REPO/bin/noctis app/main.py"
+  keys " " "a" "n"; sleep 0.8
+  lit "OpenCode"; keys Enter; sleep 8
+  shot opencode
+  tm resize-window -t main -x 120 -y 35; sleep 2
+  shot opencode-resized
+  tm send-keys -t main C-c; sleep 2
+  keys j
+  shot opencode-exit
+  reset_demo
+fi
+
 echo "Done: $OUT"

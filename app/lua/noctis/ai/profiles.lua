@@ -6,6 +6,8 @@
 --     github.com/openai/codex (codex-rs/cli; developers.openai.com/codex/cli)
 --   Kimi Code    kimi --version · kimi --continue (latest session in the directory)
 --     https://www.kimi.com/code/docs/en/kimi-code-cli/reference/kimi-command.html
+--   OpenCode     opencode --version · opencode --continue (latest session)
+--     https://opencode.ai/docs/cli/ (also `opencode --help` of v1.18.34)
 -- NOCTIS stores no API keys and doesn't change tool permissions; login and
 -- permission prompts stay in the tool's own interface.
 local M = {}
@@ -35,9 +37,17 @@ M.builtin = {
     install = "curl -fsSL https://code.kimi.com/kimi-code/install.sh | bash   (or: npm install -g @moonshot-ai/kimi-code)",
     docs = "https://www.kimi.com/code/docs/en/kimi-code-cli/reference/kimi-command.html",
   },
+  opencode = {
+    label = "OpenCode",
+    cmd = { "opencode" },
+    version_args = { "--version" },
+    resume_args = { "--continue" },
+    install = "curl -fsSL https://opencode.ai/install | bash   (or: npm install -g opencode-ai)",
+    docs = "https://opencode.ai/docs/cli/",
+  },
 }
 
-M.order = { "claude", "codex", "kimi" }
+M.order = { "claude", "codex", "kimi", "opencode" }
 
 local function valid_argv(v)
   if type(v) ~= "table" or #v == 0 then

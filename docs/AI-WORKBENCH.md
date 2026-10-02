@@ -1,7 +1,7 @@
 # AI Workbench guide
 
-The AI Workbench runs existing AI coding CLIs (Codex CLI, Claude Code, Kimi Code
-or a tool you define) inside NOCTIS in **real terminal sessions**, watches the
+The AI Workbench runs existing AI coding CLIs (Claude Code, Codex CLI, Kimi Code,
+OpenCode or a tool you define) inside NOCTIS in **real terminal sessions**, watches the
 changes these tools (or any other program) make to project files live, and lets
 you review them and, if needed, revert them safely.
 
@@ -41,6 +41,7 @@ included (the tool's own behavior is kept). This was verified in a real PTY:
 | Claude Code | `claude` | `claude --version` | `claude --continue` (latest conversation in the directory) | [CLI reference](https://code.claude.com/docs/en/cli-reference) |
 | Codex CLI | `codex` | `codex --version` | `codex resume --last` | [openai/codex](https://github.com/openai/codex) (`codex-rs/cli`), [docs](https://developers.openai.com/codex/cli) |
 | Kimi Code | `kimi` | `kimi --version` | `kimi --continue` (latest session in the directory) | [kimi command](https://www.kimi.com/code/docs/en/kimi-code-cli/reference/kimi-command.html), [MoonshotAI/kimi-code](https://github.com/MoonshotAI/kimi-code) |
+| OpenCode | `opencode` | `opencode --version` | `opencode --continue` (latest session) | [CLI docs](https://opencode.ai/docs/cli/), `opencode --help` (v1.18.34) |
 | Custom | the argument list you define | optional | — | `config.lua` |
 
 The default launch uses **no flags** (the tool's normal interactive mode). The
@@ -82,6 +83,10 @@ The editor is unaffected.
   *exited (code)*, *failed to start*. "Task finished", "waiting for approval",
   tokens/cost and the like are never guessed from terminal text or shown. A live
   process doesn't prove a task is in progress, and silence doesn't prove it's done.
+- When a tool exits while you're typing in it, NOCTIS leaves Terminal mode, so a
+  stray key can't close the terminal and wipe the tool's last output (Neovim
+  deletes an exited terminal on the next key in Terminal mode). The output stays
+  scrollable and copyable; the session shows *exited (code)*.
 - When quitting with `Space q q`, running sessions are listed; the processes are
   stopped on quit (there's no promise of them staying in the background).
 - Layout: a right panel on wide screens, a bottom panel at medium width, the full
@@ -215,6 +220,7 @@ review it inside the tool and send it yourself.
 | Claude Code | 2.1.287 | Launch and first-run screen in a PTY (colors, ASCII art, diff preview), redraw on a 160→120 column resize, insert mode kept while the panel layout changes. **No prompt was sent**, no paid task was started. Login and the file-writing flow were not verified in this environment. |
 | Codex CLI | — | Not installed in this environment; **not verified**. Flags verified from the official source. |
 | Kimi Code | — | Not installed in this environment; **not verified**. Flags verified from the official docs. |
+| OpenCode | 1.18.34 | Launch screen in a PTY, project root, 160→120 column resize with Terminal mode kept, Ctrl-C reaching the tool (exit 0), output kept after exit. **No prompt was sent.** Login and the file-writing flow were not verified in this environment. |
 | Test CLI (`tools/noctis-fake-ai`) | 1.0 | End to end: PTY, ANSI colors, project root, normal writes, atomic saves, create/delete, subfolders, `.gitignore`, keeps running while hidden, Ctrl-C (SIGINT), exit code, missing executable |
 
 The test CLI passing doesn't mean all three real tools were fully tested.

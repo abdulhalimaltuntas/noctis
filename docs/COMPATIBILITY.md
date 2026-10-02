@@ -32,6 +32,7 @@ Date: 2026-10-02.
 | Claude Code | 2.1.287 | ✅ Launch/first-run screen, colors, resizing and keeping insert mode observed in a PTY (`claude-code*.png`). No prompt was sent; login and the file-writing flow were not verified in this environment |
 | Codex CLI | — | ⚪ Not installed; not verified. Flags verified from the official source |
 | Kimi Code | — | ⚪ Not installed; not verified. Flags verified from the official docs |
+| OpenCode | 1.18.34 (npm `opencode-ai`) | ✅ Launch screen, project root, resizing with Terminal mode kept, Ctrl-C reaching the tool (exit 0), Terminal mode left on exit so the last output stays (`opencode*.png`). Flags verified from `opencode --help` and the CLI docs. No prompt was sent; login and the file-writing flow were not verified. A stray `+q4d73` (an unanswered XTGETTCAP query from the tool) can remain in the scrollback after exit |
 | Test CLI | 1.0 | ✅ End to end (kinds of file writes, Ctrl-C/SIGINT, exit code, keeps running while hidden) |
 
 ## Language servers
@@ -58,7 +59,7 @@ Date: 2026-10-02.
 | 10 | Small/large size, resizing, long names, no icons | ✅ | `test_plugins` (no overflow at 60–200 columns, long name), `small-terminal.png`, `no-icons-ascii.png`, `claude-code-resized.png` |
 | 11 | No network, missing `rg`/language server, `--safe` | ✅ | `test_safe` (two modes), `launcher_test` |
 | 12 | Reinstall keeps settings; uninstall stays within bounds | ✅ | `tests/install_test.sh` |
-| 13 | AI profiles in separate PTYs, the right root; hide/switch/resize/focus | ✅ | `test_ai` (PTY + fake CLI), `test_plugins` (focus), real Claude Code (`claude-code*.png`) |
+| 13 | AI profiles in separate PTYs, the right root; hide/switch/resize/focus | ✅ | `test_ai` (PTY + fake CLI), `test_plugins` (focus), real Claude Code (`claude-code*.png`) and OpenCode (`opencode*.png`) |
 | 14 | Pre-baseline staged/unstaged/untracked kept; Git ↔ interval separate; index unchanged | ✅ | `test_ai` (index bytes compared) |
 | 15 | Normal writes, atomic saves, create/delete, subfolders; clean buffers update; project without Git | ✅ | `test_ai` |
 | 16 | Unsaved edit + AI change: both contents kept | ✅ | `test_ai` (conflict, 3-way merge), `test_core` (deleted file) |
@@ -71,7 +72,7 @@ Additional: the typing animation is covered by `test_core` (glow and fade,
 text integrity, pastes/macros/big files skipped, toggle, 256-color fallback) and
 was verified in a real PTY (the timer-driven redraw happens without a keypress).
 
-Totals: **127 automated tests** — launcher 23, install 16, core 29, AI 22,
+Totals: **128 automated tests** — launcher 23, install 16, core 29, AI 23,
 safe mode 7 + 7, plugins 14, LSP 9 (`tests/run.sh --plugins`).
 
 ## Visual verification

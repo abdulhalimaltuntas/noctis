@@ -149,6 +149,12 @@ local function float_cfg()
   }
 end
 
+--- Is the terminal buffer's process still running?
+local function job_alive(buf)
+  local chan = vim.bo[buf].channel
+  return chan ~= nil and chan > 0 and vim.fn.jobwait({ chan }, 0)[1] == -1
+end
+
 ---@param opts? {focus?:boolean}
 function M.open(opts)
   opts = opts or {}
@@ -180,7 +186,9 @@ function M.open(opts)
   M.refresh()
   if opts.focus then
     api.nvim_set_current_win(M.win)
-    if vim.bo[buf].buftype == "terminal" then
+    -- Terminal mode only while the process runs: in an exited terminal any key
+    -- would delete the buffer (and the tool's last output) in Terminal mode.
+    if vim.bo[buf].buftype == "terminal" and job_alive(buf) then
       vim.cmd("startinsert")
       -- When called from an event/autocommand the mode change is deferred;
       -- make sure terminal (insert) mode is really active.

@@ -15,8 +15,8 @@
 </p>
 
 Open a project, find a file, write, see errors, run commands in a terminal,
-review Git changes — and run AI tools such as Codex CLI, Claude Code or
-Kimi Code on the same screen while watching every file change they make, live.
+review Git changes — and run AI tools such as Claude Code, Codex CLI, Kimi Code
+or OpenCode on the same screen while watching every file change they make, live.
 
 > **NOCTIS is a Neovim distribution.** It is not a new editor engine: text
 > editing, undo, buffers/splits, the terminal and file I/O come from Neovim's
@@ -80,7 +80,7 @@ not design mockups. How: [`tests/visual/`](tests/visual/). More images:
 | lazygit | optional | otherwise the built-in NOCTIS Git summary is used |
 | tree-sitter CLI ≥ 0.26.1 + C compiler | optional | for Tree-sitter parsers; otherwise Vim syntax highlighting |
 | Language servers / formatters | optional | installed per language pack, on request (`:NoctisLang`) |
-| Codex CLI / Claude Code / Kimi Code | optional | for the AI Workbench; the editor works fine without them |
+| Claude Code / Codex CLI / Kimi Code / OpenCode | optional | for the AI Workbench; the editor works fine without them |
 
 `noctis --doctor` checks all of the above.
 

@@ -111,8 +111,14 @@ function M.start(profile, root, win, opts)
         s.code = code
         s.status = (code == 126 or code == 127) and "failed" or "exited"
         emit(s)
-        -- When the process ends, catch changes that may have been missed
         vim.schedule(function()
+          -- Neovim deletes an exited terminal buffer on the next key pressed in
+          -- Terminal mode. Leave Terminal mode so a stray key can't wipe the
+          -- tool's last output (why it exited); it stays scrollable/copyable.
+          if api.nvim_get_current_buf() == s.buf and api.nvim_get_mode().mode == "t" then
+            vim.cmd("stopinsert")
+          end
+          -- When the process ends, catch changes that may have been missed
           local t = require("noctis.ai.tracker").get(s.root)
           if t then
             t:reconcile()
